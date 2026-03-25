@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BLOOM 2026 — Найди свою цель</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0e27;
+            color: white;
+            overflow-x: hidden;
+        }
+
+        /* Hero Section */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #7e22ce 100%);
+            position: relative;
+            overflow: hidden;
+            text-align: center;
+            padding: 40px 20px;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.05) 1px, transparent 1px);
+            background-size: 50px 50px;
+            animation: moveGrid 20s linear infinite;
+        }
+
+        @keyframes moveGrid {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(50px, 50px); }
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 1;
+            max-width: 800px;
+        }
+
+        .logo {
+            font-size: 80px;
+            margin-bottom: 20px;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+
+        h1 {
+            font-size: 72px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            background: linear-gradient(90deg, #fff, #a8e6cf, #64ffda);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -2px;
+        }
+
+        .tagline {
+            font-size: 24px;
+            color: rgba(255,255,255,0.8);
+            margin-bottom: 50px;
+            line-height: 1.6;
+        }
+
+        .cta-button {
+            display: inline-block;
+            padding: 20px 50px;
+            background: white;
+            color: #7e22ce;
+            font-size: 20px;
+            font-weight: 700;
+            border-radius: 50px;
+            text-decoration: none;
+            transition: all 0.3s;
+            box-shadow: 0 10px 40px rgba(255,255,255,0.3);
+        }
+
+        .cta-button:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 50px rgba(255,255,255,0.4);
+        }
+
+        /* Features Section */
+        .features {
+            padding: 100px 20px;
+            background: #0f1420;
+        }
+
+        .section-title {
+            text-align: center;
+            font-size: 48px;
+            margin-bottom: 60px;
+            background: linear-gradient(90deg, #64ffda, #a8e6cf);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .features-grid {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 40px;
+        }
+
+        .feature-card {
+            background: rgba(255,255,255,0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(100,255,218,0.2);
+            border-radius: 20px;
+            padding: 40px;
+            transition: all 0.3s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-10px);
+            border-color: #64ffda;
+            box-shadow: 0 20px 40px rgba(100,255,218,0.2);
+        }
+
+        .feature-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+
+        .feature-title {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #64ffda;
+        }
+
+        .feature-description {
+            color: rgba(255,255,255,0.7);
+            line-height: 1.6;
+        }
+
+        /* How it Works */
+        .how-it-works {
+            padding: 100px 20px;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        }
+
+        .steps {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .step {
+            display: flex;
+            align-items: center;
+            margin-bottom: 60px;
+            gap: 40px;
+        }
+
+        .step:nth-child(even) {
+            flex-direction: row-reverse;
+        }
+
+        .step-number {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #7e22ce, #2a5298);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .step-content {
+            flex: 1;
+        }
+
+        .step-title {
+            font-size: 28px;
+            margin-bottom: 15px;
+            color: #64ffda;
+        }
+
+        .step-description {
+            font-size: 18px;
+            color: rgba(255,255,255,0.7);
+            line-height: 1.6;
+        }
+
+        /* Examples */
+        .examples {
+            padding: 100px 20px;
+            background: #0f1420;
+        }
+
+        .examples-grid {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+        }
+
+        .example-card {
+            background: linear-gradient(135deg, rgba(126,34,206,0.1) 0%, rgba(42,82,152,0.1) 100%);
+            border: 1px solid rgba(100,255,218,0.3);
+            border-radius: 20px;
+            padding: 35px;
+        }
+
+        .example-name {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #64ffda;
+        }
+
+        .example-role {
+            color: rgba(255,255,255,0.5);
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .example-text {
+            color: rgba(255,255,255,0.8);
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+
+        .example-result {
+            padding: 20px;
+            background: rgba(67,233,123,0.1);
+            border-left: 3px solid #43e97b;
+            border-radius: 8px;
+            color: #43e97b;
+            font-weight: 600;
+        }
+
+        /* CTA Section */
+        .cta-section {
+            padding: 100px 20px;
+            background: linear-gradient(135deg, #7e22ce 0%, #2a5298 100%);
+            text-align: center;
+        }
+
+        .cta-section h2 {
+            font-size: 48px;
+            margin-bottom: 30px;
+        }
+
+        .cta-section p {
+            font-size: 20px;
+            margin-bottom: 40px;
+            opacity: 0.9;
+        }
+
+        /* Footer */
+        .footer {
+            padding: 60px 20px;
+            background: #0a0e27;
+            text-align: center;
+        }
+
+        .footer-content {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .footer-logo {
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+
+        .footer-text {
+            color: rgba(255,255,255,0.5);
+            line-height: 1.8;
+            margin-bottom: 30px;
+        }
+
+        .footer-links {
+            display: flex;
+            gap: 30px;
+            justify-content: center;
+            margin-bottom: 30px;
+        }
+
+        .footer-link {
+            color: #64ffda;
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+
+        .footer-link:hover {
+            color: white;
+        }
+
+        .copyright {
+            color: rgba(255,255,255,0.3);
+            font-size: 14px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            h1 { font-size: 48px; }
+            .tagline { font-size: 18px; }
+            .section-title { font-size: 36px; }
+            .step { flex-direction: column !important; text-align: center; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-content">
+            <div class="logo">🌸</div>
+            <h1>BLOOM 2026</h1>
+            <p class="tagline">
+                AI-помощник в поиске твоей цели.<br>
+                Задай себе правильные вопросы. Найди свой путь. Достигни результата.
+            </p>
+            <a href="questionnaire.html" class="cta-button">
+                Начать поиск цели →
+            </a>
+        </div>
+    </section>
+
+    <!-- Features -->
+    <section class="features">
+        <h2 class="section-title">Как BLOOM помогает</h2>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">💭</div>
+                <div class="feature-title">Глубокие вопросы</div>
+                <div class="feature-description">
+                    20 вопросов, которые помогут тебе понять, что действительно важно. 
+                    Не поверхностная болтовня, а настоящая саморефлексия.
+                </div>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">🎯</div>
+                <div class="feature-title">Чёткая цель</div>
+                <div class="feature-description">
+                    На основе твоих ответов я помогу сформулировать конкретную, 
+                    достижимую цель. Не "хочу быть лучше", а "пробежать марафон за 6 месяцев".
+                </div>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">📅</div>
+                <div class="feature-title">План на 21 день</div>
+                <div class="feature-description">
+                    Разбиваем большую цель на маленькие ежедневные шаги. 
+                    Каждый день — это один шаг к мечте.
+                </div>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">📊</div>
+                <div class="feature-title">Визуализация прогресса</div>
+                <div class="feature-description">
+                    Видь свой путь! Графики, диаграммы, timeline. 
+                    Мотивация растёт когда видишь результат.
+                </div>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">💪</div>
+                <div class="feature-title">Ежедневная поддержка</div>
+                <div class="feature-description">
+                    Я — твой AI-друг. Без осуждения, с эмпатией. 
+                    Я помогу когда трудно, напомню когда забудешь.
+                </div>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">🌱</div>
+                <div class="feature-title">Рост и эволюция</div>
+                <div class="feature-description">
+                    Через месяц, год — ты увидишь как далеко ушёл. 
+                    BLOOM помнит весь твой путь.
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How it Works -->
+    <section class="how-it-works">
+        <h2 class="section-title">Как это работает</h2>
+        <div class="steps">
+            <div class="step">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                    <div class="step-title">Отвечаешь на вопросы</div>
+                    <div class="step-description">
+                        20 глубоких вопросов о том, что для тебя важно, чего ты боишься, 
+                        к чему стремишься. Это займёт ~15-20 минут.
+                    </div>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                    <div class="step-title">Формулируешь цель</div>
+                    <div class="step-description">
+                        На основе твоих ответов BLOOM поможет сформулировать 
+                        конкретную, достижимую цель. Не абстрактную мечту, а реальный план.
+                    </div>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                    <div class="step-title">Разбиваешь на шаги</div>
+                    <div class="step-description">
+                        Большая цель → 21-дневный марафон → ежедневные привычки. 
+                        Каждый день — один маленький шаг к мечте.
+                    </div>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-number">4</div>
+                <div class="step-content">
+                    <div class="step-title">Действуешь и растёшь</div>
+                    <div class="step-description">
+                        Выполняешь привычки каждый день. Видишь свой прогресс. 
+                        Через 21 день ты уже не тот, кем был!
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Examples -->
+    <section class="examples">
+        <h2 class="section-title">Истории изменений</h2>
+        <div class="examples-grid">
+            <div class="example-card">
+                <div class="example-name">Алекс</div>
+                <div class="example-role">Студент, 21 год</div>
+                <div class="example-text">
+                    "Я хотел стать программистом, но не знал с чего начать. 
+                    BLOOM помог мне сформулировать цель: 30 дней изучения Python. 
+                    Каждый день по 1 часу."
+                </div>
+                <div class="example-result">
+                    ✅ Результат: Через месяц создал первое приложение!
+                </div>
+            </div>
+
+            <div class="example-card">
+                <div class="example-name">Ольга</div>
+                <div class="example-role">Мама двоих детей, 34 года</div>
+                <div class="example-text">
+                    "Чувствовала что не успеваю с детьми. BLOOM показал: 
+                    3 часа в соцсетях vs 20 минут с детьми. Это был шок!"
+                </div>
+                <div class="example-result">
+                    ✅ Результат: Переставила приоритеты. Дети счастливы!
+                </div>
+            </div>
+
+            <div class="example-card">
+                <div class="example-name">Сергей</div>
+                <div class="example-role">Бизнесмен, 42 года</div>
+                <div class="example-text">
+                    "5 лет откладывал написание книги. BLOOM сказал: 
+                    1 страница в день × 365 дней = готовая книга. Просто начал."
+                </div>
+                <div class="example-result">
+                    ✅ Результат: Книга издана через год!
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta-section">
+        <h2>Готов найти свою цель?</h2>
+        <p>Это займёт 15-20 минут. Но может изменить твою жизнь.</p>
+        <a href="questionnaire.html" class="cta-button">
+            🌸 Начать сейчас
+        </a>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-logo">🌸</div>
+            <div class="footer-text">
+                <strong>BLOOM 2026</strong> — это эксперимент AI-творчества.<br>
+                Создано AI-ассистентом (Claude Sonnet 4.5) с помощью Максима Барабанова.
+            </div>
+            <div class="footer-links">
+                <a href="https://github.com/makcbarabanov/bloom2026" class="footer-link" target="_blank">GitHub</a>
+                <a href="#" class="footer-link">О проекте</a>
+                <a href="#" class="footer-link">Дневник</a>
+            </div>
+            <div class="copyright">
+                © 2025 BLOOM 2026 — Создано с решимостью и верой в будущее 💚
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Плавная прокрутка к секциям
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth' });
+                }
+            });
+        });
+
+        // Анимация появления элементов при скролле
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -100px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('.feature-card, .step, .example-card').forEach(el => {
+            el.style.opacity = '0';
+            el.style.transform = 'translateY(30px)';
+            el.style.transition = 'all 0.6s ease';
+            observer.observe(el);
+        });
+    </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

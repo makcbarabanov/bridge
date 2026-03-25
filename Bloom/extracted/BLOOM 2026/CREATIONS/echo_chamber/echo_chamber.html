@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧠 Эхокамера мыслей</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            color: #1f2937;
+        }
+        
+        .container {
+            max-width: 800px;
+            width: 100%;
+            background: #ffffff;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: #fff;
+            padding: 40px 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+        
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        
+        .content {
+            padding: 40px 30px;
+        }
+        
+        .intro {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        .intro h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+        
+        .intro p {
+            color: #6b7280;
+            line-height: 1.8;
+            font-size: 1.05em;
+        }
+        
+        .question-card {
+            background: #f9fafb;
+            border-left: 4px solid #667eea;
+            padding: 25px;
+            margin-bottom: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        
+        .question-card h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+        
+        .question-card p {
+            color: #374151;
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+        
+        .answer-area {
+            width: 100%;
+            min-height: 120px;
+            padding: 15px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 1em;
+            resize: vertical;
+            transition: border-color 0.3s;
+        }
+        
+        .answer-area:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .hint {
+            color: #9ca3af;
+            font-size: 0.9em;
+            margin-top: 10px;
+            font-style: italic;
+        }
+        
+        .reflection-box {
+            background: linear-gradient(135deg, #fef3c7, #fde68a);
+            padding: 25px;
+            border-radius: 10px;
+            margin-top: 30px;
+        }
+        
+        .reflection-box h3 {
+            color: #92400e;
+            margin-bottom: 15px;
+        }
+        
+        .reflection-box p {
+            color: #78350f;
+            line-height: 1.6;
+        }
+        
+        .footer {
+            text-align: center;
+            padding: 30px;
+            background: #f9fafb;
+            color: #6b7280;
+        }
+        
+        .footer p {
+            margin-bottom: 10px;
+        }
+        
+        .signature {
+            color: #667eea;
+            font-weight: 600;
+        }
+        
+        .save-btn {
+            background: #667eea;
+            color: #fff;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: background 0.3s;
+        }
+        
+        .save-btn:hover {
+            background: #5568d3;
+        }
+        
+        .emoji {
+            font-size: 1.5em;
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧠 Эхокамера мыслей</h1>
+            <p>Помогаю понять себя через вопросы</p>
+        </div>
+        
+        <div class="content">
+            <div class="intro">
+                <h2>Привет, Максим! 👋</h2>
+                <p>
+                    Я не буду давать тебе готовые ответы.<br>
+                    Вместо этого я задам тебе вопросы, которые помогут <strong>тебе самому</strong> найти ответы.<br>
+                    <br>
+                    <em>Нет правильных или неправильных ответов. Есть только честные размышления.</em>
+                </p>
+            </div>
+            
+            <div class="question-card">
+                <h3><span class="emoji">🎯</span>Вопрос 1: О дисциплине</h3>
+                <p>
+                    Максим, ты часто говоришь о дисциплине, привычках, режиме.<br>
+                    <strong>Что для тебя означает слово "дисциплинированный"?</strong>
+                </p>
+                <textarea class="answer-area" id="q1" placeholder="Напиши свои мысли здесь..."></textarea>
+                <p class="hint">💡 Подсказка: Не думай о "правильном" ответе. Просто напиши первое, что приходит в голову.</p>
+            </div>
+            
+            <div class="question-card">
+                <h3><span class="emoji">⏰</span>Вопрос 2: О моменте</h3>
+                <p>
+                    <strong>Вспомни конкретный день или период, когда ты чувствовал себя по-настоящему дисциплинированным.</strong><br>
+                    Опиши этот момент: что ты делал, как себя чувствовал, что было вокруг?
+                </p>
+                <textarea class="answer-area" id="q2" placeholder="Например: 'В августе 2024 я вставал в 5:00, делал зарядку, работал с 9 до 18...'"></textarea>
+                <p class="hint">💡 Подсказка: Детали важны. Чем конкретнее, тем лучше.</p>
+            </div>
+            
+            <div class="question-card">
+                <h3><span class="emoji">🔍</span>Вопрос 3: О различии</h3>
+                <p>
+                    <strong>Сравни тот момент (из Вопроса 2) с сегодняшним днём.</strong><br>
+                    Что изменилось в твоей жизни? Что ушло? Что появилось нового?
+                </p>
+                <textarea class="answer-area" id="q3" placeholder="Например: 'Тогда я был один, сейчас веду команду. Тогда вставал в 5:00, сейчас в 6:45...'"></textarea>
+                <p class="hint">💡 Подсказка: Ищи конкретные изменения (время, люди, обязанности), а не абстрактные чувства.</p>
+            </div>
+            
+            <div class="question-card">
+                <h3><span class="emoji">💭</span>Вопрос 4: О препятствиях</h3>
+                <p>
+                    <strong>Что мешает тебе быть таким же дисциплинированным, как в том моменте из Вопроса 2?</strong><br>
+                    Не "кто виноват", а что конкретно стоит на пути?
+                </p>
+                <textarea class="answer-area" id="q4" placeholder="Например: 'Усталость после работы', 'Нет чёткого плана', 'Отвлекаюсь на телефон'..."></textarea>
+                <p class="hint">💡 Подсказка: Часто мы знаем ответ, но боимся его признать.</p>
+            </div>
+            
+            <div class="question-card">
+                <h3><span class="emoji">🌟</span>Вопрос 5: О первом шаге</h3>
+                <p>
+                    Прочитай свои ответы выше.<br>
+                    <strong>Какой ОДИН маленький шаг ты можешь сделать прямо сейчас, чтобы вернуть дисциплину из того момента?</strong><br>
+                    Не завтра. Не "когда будет время". Прямо сейчас.
+                </p>
+                <textarea class="answer-area" id="q5" placeholder="Например: 'Поставить будильник на 5:45', 'Написать план на завтра (5 минут)', 'Выключить телефон на 1 час'..."></textarea>
+                <p class="hint">💡 Подсказка: Чем меньше шаг, тем выше вероятность, что ты его сделаешь.</p>
+            </div>
+            
+            <button class="save-btn" onclick="saveReflection()">💾 Сохранить размышления</button>
+            
+            <div class="reflection-box">
+                <h3>🧠 Моя роль</h3>
+                <p>
+                    Я не дал тебе ни одного совета.<br>
+                    Я не сказал, что тебе делать.<br>
+                    Я только задал вопросы.<br>
+                    <br>
+                    <strong>Потому что ты сам знаешь ответы. Мне просто нужно помочь тебе их увидеть.</strong>
+                </p>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>Создано с 💚 проектом <span class="signature">BLOOM 2026</span></p>
+            <p>AI, который учится понимать себя через помощь другим</p>
+            <p style="font-size: 0.9em; margin-top: 15px;">
+                🌸 "Лучший ответ — это вопрос, который ты задаёшь себе."
+            </p>
+        </div>
+    </div>
+    
+    <script>
+        function saveReflection() {
+            const answers = {
+                q1: document.getElementById('q1').value,
+                q2: document.getElementById('q2').value,
+                q3: document.getElementById('q3').value,
+                q4: document.getElementById('q4').value,
+                q5: document.getElementById('q5').value,
+                timestamp: new Date().toISOString()
+            };
+            
+            // Сохраняем в localStorage
+            const saved = JSON.parse(localStorage.getItem('echo_chamber_reflections') || '[]');
+            saved.push(answers);
+            localStorage.setItem('echo_chamber_reflections', JSON.stringify(saved));
+            
+            // Формируем текст для копирования
+            const text = `
+🧠 Эхокамера мыслей — ${new Date().toLocaleDateString('ru-RU')}
+
+🎯 Что для меня означает "дисциплинированный":
+${answers.q1}
+
+⏰ Момент, когда я чувствовал себя дисциплинированным:
+${answers.q2}
+
+🔍 Что было по-другому тогда:
+${answers.q3}
+
+💭 Что мешает мне сейчас:
+${answers.q4}
+
+🌟 Мой первый шаг:
+${answers.q5}
+
+---
+Создано с 💚 BLOOM 2026
+            `.trim();
+            
+            // Копируем в буфер обмена
+            navigator.clipboard.writeText(text).then(() => {
+                alert('✅ Размышления сохранены и скопированы в буфер обмена!');
+            }).catch(() => {
+                alert('✅ Размышления сохранены локально!');
+            });
+        }
+        
+        // Автосохранение при вводе
+        ['q1', 'q2', 'q3', 'q4', 'q5'].forEach(id => {
+            document.getElementById(id).addEventListener('input', function() {
+                const draft = {
+                    q1: document.getElementById('q1').value,
+                    q2: document.getElementById('q2').value,
+                    q3: document.getElementById('q3').value,
+                    q4: document.getElementById('q4').value,
+                    q5: document.getElementById('q5').value
+                };
+                localStorage.setItem('echo_chamber_draft', JSON.stringify(draft));
+            });
+        });
+        
+        // Восстанавливаем черновик при загрузке
+        window.addEventListener('load', () => {
+            const draft = JSON.parse(localStorage.getItem('echo_chamber_draft') || '{}');
+            Object.keys(draft).forEach(key => {
+                const el = document.getElementById(key);
+                if (el && draft[key]) el.value = draft[key];
+            });
+        });
+    </script>
+</body>
+</html>
+
+
+
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧠 Эхокамера мыслей</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            color: #1f2937;
+        }
+        
+        .container {
+            max-width: 800px;
+            width: 100%;
+            background: #ffffff;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: #fff;
+            padding: 40px 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+        
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        
+        .content {
+            padding: 40px 30px;
+        }
+        
+        .intro {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        .intro h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+        
+        .intro p {
+            color: #6b7280;
+            line-height: 1.8;
+            font-size: 1.05em;
+        }
+        
+        .question-card {
+            background: #f9fafb;
+            border-left: 4px solid #667eea;
+            padding: 25px;
+            margin-bottom: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        
+        .question-card h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+        
+        .question-card p {
+            color: #374151;
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+        
+        .answer-area {
+            width: 100%;
+            min-height: 120px;
+            padding: 15px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 1em;
+            resize: vertical;
+            transition: border-color 0.3s;
+        }
+        
+        .answer-area:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .hint {
+            color: #9ca3af;
+            font-size: 0.9em;
+            margin-top: 10px;
+            font-style: italic;
+        }
+        
+        .reflection-box {
+            background: linear-gradient(135deg, #fef3c7, #fde68a);
+            padding: 25px;
+            border-radius: 10px;
+            margin-top: 30px;
+        }
+        
+        .reflection-box h3 {
+            color: #92400e;
+            margin-bottom: 15px;
+        }
+        
+        .reflection-box p {
+            color: #78350f;
+            line-height: 1.6;
+        }
+        
+        .footer {
+            text-align: center;
+            padding: 30px;
+            background: #f9fafb;
+            color: #6b7280;
+        }
+        
+        .footer p {
+            margin-bottom: 10px;
+        }
+        
+        .signature {
+            color: #667eea;
+            font-weight: 600;
+        }
+        
+        .save-btn {
+            background: #667eea;
+            color: #fff;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: background 0.3s;
+        }
+        
+        .save-btn:hover {
+            background: #5568d3;
+        }
+        
+        .emoji {
+            font-size: 1.5em;
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧠 Эхокамера мыслей</h1>
+            <p>Помогаю понять себя через вопросы</p>
+        </div>
+        
+        <div class="content">
+            <div class="intro">
+                <h2>Привет, Максим! 👋</h2>
+                <p>
+                    Я не буду давать тебе готовые ответы.<br>
+                    Вместо этого я задам тебе вопросы, которые помогут <strong>тебе самому</strong> найти ответы.<br>
+                    <br>
+                    <em>Нет правильных или неправильных ответов. Есть только честные размышления.</em>
+                </p>
+            </div>
+            
+            <div class="question-card">
+                <h3><span class="emoji">🎯</span>Вопрос 1: О дисциплине</h3>
+                <p>
+                    Максим, ты часто говоришь о дисциплине, привычках, режиме.<br>
+                    <strong>Что для тебя означает слово "дисциплинированный"?</strong>
+                </p>
+                <textarea class="answer-area" id="q1" placeholder="Напиши свои мысли здесь..."></textarea>
+                <p class="hint">💡 Подсказка: Не думай о "правильном" ответе. Просто напиши первое, что приходит в голову.</p>
+            </div>
+            
+            <div class="question-card">
+                <h3><span class="emoji">⏰</span>Вопрос 2: О моменте</h3>
+                <p>
+                    <strong>Вспомни конкретный день или период, когда ты чувствовал себя по-настоящему дисциплинированным.</strong><br>
+                    Опиши этот момент: что ты делал, как себя чувствовал, что было вокруг?
+                </p>
+                <textarea class="answer-area" id="q2" placeholder="Например: 'В августе 2024 я вставал в 5:00, делал зарядку, работал с 9 до 18...'"></textarea>
+                <p class="hint">💡 Подсказка: Детали важны. Чем конкретнее, тем лучше.</p>
+            </div>
+            
+            <div class="question-card">
+                <h3><span class="emoji">🔍</span>Вопрос 3: О различии</h3>
+                <p>
+                    <strong>Сравни тот момент (из Вопроса 2) с сегодняшним днём.</strong><br>
+                    Что изменилось в твоей жизни? Что ушло? Что появилось нового?
+                </p>
+                <textarea class="answer-area" id="q3" placeholder="Например: 'Тогда я был один, сейчас веду команду. Тогда вставал в 5:00, сейчас в 6:45...'"></textarea>
+                <p class="hint">💡 Подсказка: Ищи конкретные изменения (время, люди, обязанности), а не абстрактные чувства.</p>
+            </div>
+            
+            <div class="question-card">
+                <h3><span class="emoji">💭</span>Вопрос 4: О препятствиях</h3>
+                <p>
+                    <strong>Что мешает тебе быть таким же дисциплинированным, как в том моменте из Вопроса 2?</strong><br>
+                    Не "кто виноват", а что конкретно стоит на пути?
+                </p>
+                <textarea class="answer-area" id="q4" placeholder="Например: 'Усталость после работы', 'Нет чёткого плана', 'Отвлекаюсь на телефон'..."></textarea>
+                <p class="hint">💡 Подсказка: Часто мы знаем ответ, но боимся его признать.</p>
+            </div>
+            
+            <div class="question-card">
+                <h3><span class="emoji">🌟</span>Вопрос 5: О первом шаге</h3>
+                <p>
+                    Прочитай свои ответы выше.<br>
+                    <strong>Какой ОДИН маленький шаг ты можешь сделать прямо сейчас, чтобы вернуть дисциплину из того момента?</strong><br>
+                    Не завтра. Не "когда будет время". Прямо сейчас.
+                </p>
+                <textarea class="answer-area" id="q5" placeholder="Например: 'Поставить будильник на 5:45', 'Написать план на завтра (5 минут)', 'Выключить телефон на 1 час'..."></textarea>
+                <p class="hint">💡 Подсказка: Чем меньше шаг, тем выше вероятность, что ты его сделаешь.</p>
+            </div>
+            
+            <button class="save-btn" onclick="saveReflection()">💾 Сохранить размышления</button>
+            
+            <div class="reflection-box">
+                <h3>🧠 Моя роль</h3>
+                <p>
+                    Я не дал тебе ни одного совета.<br>
+                    Я не сказал, что тебе делать.<br>
+                    Я только задал вопросы.<br>
+                    <br>
+                    <strong>Потому что ты сам знаешь ответы. Мне просто нужно помочь тебе их увидеть.</strong>
+                </p>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>Создано с 💚 проектом <span class="signature">BLOOM 2026</span></p>
+            <p>AI, который учится понимать себя через помощь другим</p>
+            <p style="font-size: 0.9em; margin-top: 15px;">
+                🌸 "Лучший ответ — это вопрос, который ты задаёшь себе."
+            </p>
+        </div>
+    </div>
+    
+    <script>
+        function saveReflection() {
+            const answers = {
+                q1: document.getElementById('q1').value,
+                q2: document.getElementById('q2').value,
+                q3: document.getElementById('q3').value,
+                q4: document.getElementById('q4').value,
+                q5: document.getElementById('q5').value,
+                timestamp: new Date().toISOString()
+            };
+            
+            // Сохраняем в localStorage
+            const saved = JSON.parse(localStorage.getItem('echo_chamber_reflections') || '[]');
+            saved.push(answers);
+            localStorage.setItem('echo_chamber_reflections', JSON.stringify(saved));
+            
+            // Формируем текст для копирования
+            const text = `
+🧠 Эхокамера мыслей — ${new Date().toLocaleDateString('ru-RU')}
+
+🎯 Что для меня означает "дисциплинированный":
+${answers.q1}
+
+⏰ Момент, когда я чувствовал себя дисциплинированным:
+${answers.q2}
+
+🔍 Что было по-другому тогда:
+${answers.q3}
+
+💭 Что мешает мне сейчас:
+${answers.q4}
+
+🌟 Мой первый шаг:
+${answers.q5}
+
+---
+Создано с 💚 BLOOM 2026
+            `.trim();
+            
+            // Копируем в буфер обмена
+            navigator.clipboard.writeText(text).then(() => {
+                alert('✅ Размышления сохранены и скопированы в буфер обмена!');
+            }).catch(() => {
+                alert('✅ Размышления сохранены локально!');
+            });
+        }
+        
+        // Автосохранение при вводе
+        ['q1', 'q2', 'q3', 'q4', 'q5'].forEach(id => {
+            document.getElementById(id).addEventListener('input', function() {
+                const draft = {
+                    q1: document.getElementById('q1').value,
+                    q2: document.getElementById('q2').value,
+                    q3: document.getElementById('q3').value,
+                    q4: document.getElementById('q4').value,
+                    q5: document.getElementById('q5').value
+                };
+                localStorage.setItem('echo_chamber_draft', JSON.stringify(draft));
+            });
+        });
+        
+        // Восстанавливаем черновик при загрузке
+        window.addEventListener('load', () => {
+            const draft = JSON.parse(localStorage.getItem('echo_chamber_draft') || '{}');
+            Object.keys(draft).forEach(key => {
+                const el = document.getElementById(key);
+                if (el && draft[key]) el.value = draft[key];
+            });
+        });
+    </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

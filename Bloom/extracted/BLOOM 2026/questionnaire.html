@@ -1,0 +1,1577 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BLOOM — Найди свою цель</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #7e22ce 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            color: white;
+        }
+
+        .container {
+            max-width: 700px;
+            width: 100%;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 24px;
+            padding: 50px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            color: #1a1a1a;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .progress {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 40px;
+        }
+
+        .progress-dot {
+            flex: 1;
+            height: 4px;
+            background: #e0e0e0;
+            border-radius: 2px;
+            transition: all 0.3s;
+        }
+
+        .progress-dot.active {
+            background: linear-gradient(90deg, #7e22ce, #2a5298);
+        }
+
+        .question-number {
+            color: #7e22ce;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .question {
+            font-size: 28px;
+            font-weight: 600;
+            line-height: 1.4;
+            margin-bottom: 40px;
+            color: #1a1a1a;
+        }
+
+        .answer {
+            width: 100%;
+            min-height: 120px;
+            padding: 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 16px;
+            font-size: 16px;
+            font-family: inherit;
+            resize: vertical;
+            outline: none;
+            transition: all 0.3s;
+            margin-bottom: 30px;
+        }
+
+        .answer:focus {
+            border-color: #7e22ce;
+            box-shadow: 0 0 0 4px rgba(126, 34, 206, 0.1);
+        }
+
+        .buttons {
+            display: flex;
+            gap: 16px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 16px 32px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #7e22ce 0%, #2a5298 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(126, 34, 206, 0.3);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #666;
+        }
+
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+
+        .completion {
+            text-align: center;
+        }
+
+        .completion h2 {
+            font-size: 36px;
+            margin-bottom: 20px;
+            color: #7e22ce;
+        }
+
+        .completion p {
+            font-size: 18px;
+            line-height: 1.6;
+            margin-bottom: 30px;
+            color: #666;
+        }
+
+        .contact-form {
+            text-align: center;
+        }
+
+        .contact-form h2 {
+            font-size: 36px;
+            margin-bottom: 20px;
+            color: #7e22ce;
+        }
+
+        .contact-form p {
+            font-size: 18px;
+            line-height: 1.6;
+            margin-bottom: 30px;
+            color: #666;
+        }
+
+        .form-group {
+            margin-bottom: 30px;
+            text-align: left;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e1e5e9;
+            border-radius: 12px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #7e22ce;
+            box-shadow: 0 0 0 3px rgba(126, 34, 206, 0.1);
+        }
+
+        .form-text {
+            display: block;
+            margin-top: 8px;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .result-box {
+            background: #f8f9ff;
+            padding: 30px;
+            border-radius: 16px;
+            margin: 30px 0;
+            border-left: 4px solid #7e22ce;
+        }
+
+        .result-box h3 {
+            color: #7e22ce;
+            margin-bottom: 15px;
+        }
+
+        .result-box p {
+            color: #1a1a1a;
+            font-size: 16px;
+            line-height: 1.6;
+        }
+
+        .intro {
+            text-align: center;
+        }
+
+        .intro h1 {
+            font-size: 42px;
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, #7e22ce 0%, #2a5298 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .intro p {
+            font-size: 18px;
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 40px;
+        }
+
+        .auth-input {
+            width: 100%;
+            padding: 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            font-size: 16px;
+            margin-bottom: 20px;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        .auth-input:focus {
+            border-color: #7e22ce;
+            box-shadow: 0 0 0 4px rgba(126, 34, 206, 0.1);
+        }
+
+        .error-message {
+            background: #fee;
+            color: #c33;
+            padding: 16px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #7e22ce;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .save-status {
+            text-align: center;
+            margin-bottom: 10px;
+            color: #999;
+            font-size: 14px;
+            min-height: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card" id="app">
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>Загрузка...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // === КОНФИГУРАЦИЯ ===
+        const API_URL = 'https://marabot.tw1.ru';
+        
+        const BASE_QUESTIONS = [
+            { text: "{name}, что для тебя по-настоящему важно в жизни прямо сейчас?", minAge: 5 },
+            { text: "{name}, если бы у тебя было неограниченное время и ресурсы, чем бы ты занимался?", minAge: 5 },
+            { text: "Чего ты боишься больше всего?", minAge: 5 }
+            // ВРЕМЕННО СОКРАЩЕНО ДЛЯ ТЕСТИРОВАНИЯ - ВЕРНУТЬ ПОТОМ!
+            // { text: "Что бы ты сделал(а), если бы точно знал(а), что не провалишься?", minAge: 7 },
+            // { text: "{name}, каким человеком ты хочешь быть через год?", minAge: 5 },
+            // { text: "Что ты хочешь, чтобы о тебе говорили люди?", minAge: 8 },
+            // { text: "Какую проблему в мире ты хотел(а) бы решить?", minAge: 8 },
+            // { text: "Что делает тебя по-настоящему счастливым?", minAge: 5 },
+            // { text: "Если бы тебе осталось жить год, как бы ты его прожил(а)?", minAge: 14 },
+            // { text: "Что ты откладываешь уже долгое время?", minAge: 10 },
+            // { text: "Какой след ты хочешь оставить в этом мире?", minAge: 12 },
+            // { text: "{name}, что бы ты посоветовал(а) себе 10 лет назад?", minAge: 20 },
+            // { text: "Что тебя вдохновляет и заряжает энергией?", minAge: 5 },
+            // { text: "От чего ты готов(а) отказаться ради своей цели?", minAge: 10 },
+            // { text: "Как ты поймёшь, что достиг(ла) успеха?", minAge: 8 },
+            // { text: "Что мешает тебе начать прямо сейчас?", minAge: 8 },
+            // { text: "Какие у тебя есть сильные стороны, {name}?", minAge: 5 },
+            // { text: "Кто те люди, которых ты хочешь сделать счастливее?", minAge: 5 },
+            // { text: "Что ты будешь чувствовать, когда достигнешь своей цели?", minAge: 5 },
+            // { text: "Какой первый шаг ты можешь сделать уже сегодня?", minAge: 5 }
+        ];
+
+        // === СОСТОЯНИЕ ===
+        let state = {
+            userName: '',
+            userAge: null,
+            userId: null,
+            telegramId: null,
+            currentQuestion: -2, // -2 = auth, -1 = intro, 0+ = questions
+            answers: {},
+            questions: [],
+            startTime: null,
+            questionStartTime: null,
+            telegramInfo: '', // Для хранения Telegram
+            phoneInfo: '', // Для хранения телефона
+            contactStep: false // Флаг для показа формы контактов
+        };
+
+        // === API ФУНКЦИИ ===
+        async function apiGet(endpoint) {
+            const response = await fetch(`${API_URL}${endpoint}`);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            return await response.json();
+        }
+
+        async function apiPost(endpoint, data) {
+            const response = await fetch(`${API_URL}${endpoint}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            return await response.json();
+        }
+
+        async function getUserByTelegramId(telegramId) {
+            const result = await apiGet(`/tables/users?where.telegram_id=${telegramId}`);
+            return result.rows && result.rows.length > 0 ? result.rows[0] : null;
+        }
+
+        async function saveAnswer(questionNumber, questionText, answer, timeSpent) {
+            return await apiPost('/tables/bloom_questionnaire_responses', {
+                user_id: state.userId,
+                user_name: state.userName,
+                user_age: state.userAge,
+                question_number: questionNumber + 1,
+                question_text: questionText,
+                answer: answer,
+                time_spent_seconds: Math.floor(timeSpent / 1000)
+            });
+        }
+
+        async function completeQuestionnaire(totalTime) {
+            console.log('=== completeQuestionnaire вызвана ===');
+            console.log('state.telegramInfo:', state.telegramInfo);
+            console.log('state.phoneInfo:', state.phoneInfo);
+            
+            // Формируем контактную информацию
+            const contactInfo = [];
+            if (state.telegramInfo) contactInfo.push(`Telegram: ${state.telegramInfo}`);
+            if (state.phoneInfo) contactInfo.push(`Телефон: ${state.phoneInfo}`);
+            const fullContactInfo = contactInfo.join(', ') || 'Не указано';
+            
+            console.log('fullContactInfo:', fullContactInfo);
+            
+            // Анализируем ответы
+            const analysis = analyzeAnswers();
+            console.log('Анализ ответов:', analysis);
+            
+            // Сохраняем контакты в responses (последний ответ)
+            const responseData = {
+                user_name: state.userName,
+                user_age: state.userAge,
+                question_number: 999, // Специальный номер для контактов
+                question_text: 'КОНТАКТНАЯ ИНФОРМАЦИЯ',
+                answer: fullContactInfo,
+                contact_info: fullContactInfo,
+                telegram_info: state.telegramInfo,
+                phone_info: state.phoneInfo,
+                time_spent_seconds: Math.floor(totalTime / 1000)
+            };
+            
+            // Сохраняем анализ в completions
+            const completionData = {
+                user_name: state.userName,
+                user_age: state.userAge,
+                contact_info: fullContactInfo,
+                telegram_info: state.telegramInfo,
+                phone_info: state.phoneInfo,
+                themes: analysis.themes.join(', '),
+                emotional_tone: analysis.emotionalTone,
+                recommendations: JSON.stringify(analysis.recommendations),
+                completed_at: new Date().toISOString(),
+                total_time_seconds: Math.floor(totalTime / 1000)
+            };
+            
+            console.log('Отправляем данные responses:', responseData);
+            console.log('Отправляем данные completions:', completionData);
+            
+            try {
+                // Сохраняем контакты
+                const responseResult = await apiPost('/tables/bloom_questionnaire_responses', responseData);
+                console.log('Результат сохранения контактов:', responseResult);
+                
+                // Сохраняем анализ
+                const completionResult = await apiPost('/tables/bloom_questionnaire_completions', completionData);
+                console.log('Результат сохранения анализа:', completionResult);
+                
+                return { responseResult, completionResult };
+            } catch (error) {
+                console.error('Ошибка сохранения:', error);
+                throw error;
+            }
+        }
+
+        // === ВОПРОСЫ С ФИЛЬТРАЦИЕЙ ПО ВОЗРАСТУ ===
+        function getQuestionsForAge(age) {
+            return BASE_QUESTIONS
+                .filter(q => age >= q.minAge)
+                .map(q => q.text.replace('{name}', state.userName));
+        }
+
+        // === UI ФУНКЦИИ ===
+        function render() {
+            const app = document.getElementById('app');
+            
+            if (state.currentQuestion === -2) {
+                renderAuth();
+            } else if (state.currentQuestion === -1) {
+                renderIntro();
+            } else if (state.currentQuestion < state.questions.length) {
+                renderQuestion();
+            } else {
+                renderCompletion();
+            }
+        }
+
+        function renderAuth() {
+            const app = document.getElementById('app');
+            app.innerHTML = `
+                <div class="intro">
+                    <h1>🌸 BLOOM</h1>
+                    <p>AI-помощник в поиске твоей цели</p>
+                    <p style="font-size: 16px; color: #999; margin-bottom: 30px;">
+                        Привет! Давай познакомимся 👋
+                    </p>
+                    <input 
+                        type="text" 
+                        class="auth-input" 
+                        id="nameInput" 
+                        placeholder="Как тебя зовут?"
+                        autofocus
+                    />
+                    <input 
+                        type="number" 
+                        class="auth-input" 
+                        id="ageInput" 
+                        placeholder="Сколько тебе лет?"
+                        min="5"
+                        max="120"
+                    />
+                    <input 
+                        type="text" 
+                        class="auth-input" 
+                        id="telegramInput" 
+                        placeholder="Telegram (необязательно): @username"
+                    />
+                    <input 
+                        type="text" 
+                        class="auth-input" 
+                        id="phoneInput" 
+                        placeholder="Телефон (необязательно): +7XXXXXXXXXX"
+                    />
+                    <div id="authMessage"></div>
+                    <button class="btn btn-primary" onclick="authenticate()" style="width: 100%;">
+                        Начать! →
+                    </button>
+                </div>
+            `;
+        }
+
+        async function authenticate() {
+            const nameInput = document.getElementById('nameInput');
+            const ageInput = document.getElementById('ageInput');
+            const telegramInput = document.getElementById('telegramInput');
+            const phoneInput = document.getElementById('phoneInput');
+            const messageDiv = document.getElementById('authMessage');
+            
+            const name = nameInput.value.trim();
+            const age = parseInt(ageInput.value);
+            const telegram = telegramInput.value.trim();
+            const phone = phoneInput.value.trim();
+
+            if (!name) {
+                messageDiv.innerHTML = '<div class="error-message">Напиши своё имя 😊</div>';
+                return;
+            }
+
+            if (!age || age < 5 || age > 120) {
+                messageDiv.innerHTML = '<div class="error-message">Укажи свой возраст (от 5 до 120 лет)</div>';
+                return;
+            }
+
+            state.userName = name;
+            state.userAge = age;
+            state.telegramInfo = telegram;
+            state.phoneInfo = phone;
+            state.questions = getQuestionsForAge(age);
+
+            try {
+                messageDiv.innerHTML = '<div class="loading"><div class="spinner"></div><p>Готовлю вопросы...</p></div>';
+                
+                // Проверяем Telegram ID из URL (если есть)
+                const urlParams = new URLSearchParams(window.location.search);
+                const telegramId = urlParams.get('telegram_id');
+                
+                if (telegramId) {
+                    const user = await getUserByTelegramId(parseInt(telegramId));
+                    if (user) {
+                        state.userId = user.id;
+                        state.telegramId = telegramId;
+                    }
+                }
+
+                // Для BLOOM не нужен user_id - контакты сохранятся в completions
+                // state.userId остается null - это нормально для BLOOM
+
+                state.currentQuestion = -1;
+                render();
+                
+            } catch (error) {
+                console.error(error);
+                messageDiv.innerHTML = '<div class="error-message">Ошибка подключения к серверу 😔</div>';
+            }
+        }
+
+        function renderIntro() {
+            const app = document.getElementById('app');
+            
+            app.innerHTML = `
+                <div class="intro">
+                    <h1>🌸 BLOOM</h1>
+                    <p>
+                        Отлично, <strong>${state.userName}</strong>! 
+                    </p>
+                    <p>
+                        Я задам тебе <strong>${state.questions.length} вопросов</strong>, которые помогут тебе лучше понять себя.<br>
+                        Отвечай честно, не спеши.<br>
+                        Здесь нет правильных или неправильных ответов.
+                    </p>
+                    <p style="margin-top: 30px; font-size: 16px; color: #999;">
+                        ⏱️ Это займёт примерно ${Math.ceil(state.questions.length * 1.5)} минут<br>
+                        💾 Ответы сохраняются автоматически<br>
+                        🔄 Можешь вернуться в любой момент
+                    </p>
+                    <button class="btn btn-primary" onclick="start()" style="margin-top: 40px; width: 100%;">
+                        Поехали! →
+                    </button>
+                </div>
+            `;
+        }
+
+        function renderQuestion() {
+            const app = document.getElementById('app');
+            const progress = state.questions.map((_, i) => 
+                `<div class="progress-dot ${i <= state.currentQuestion ? 'active' : ''}"></div>`
+            ).join('');
+            
+            app.innerHTML = `
+                <div class="progress">${progress}</div>
+                <div class="question-number">Вопрос ${state.currentQuestion + 1} из ${state.questions.length}</div>
+                <div class="question">${state.questions[state.currentQuestion]}</div>
+                <textarea 
+                    class="answer" 
+                    id="answerInput"
+                    placeholder="Напиши свой ответ здесь..."
+                    autofocus
+                >${state.answers[state.currentQuestion] || ''}</textarea>
+                <div class="save-status" id="saveStatus"></div>
+                <div class="buttons">
+                    ${state.currentQuestion > 0 ? '<button class="btn btn-secondary" onclick="prev()">← Назад</button>' : '<div></div>'}
+                    <button class="btn btn-primary" onclick="next()" id="nextBtn">
+                        ${state.currentQuestion === state.questions.length - 1 ? 'Завершить! →' : 'Далее →'}
+                    </button>
+                </div>
+            `;
+            
+            const textarea = document.getElementById('answerInput');
+            textarea.addEventListener('input', () => {
+                state.answers[state.currentQuestion] = textarea.value;
+                updateNextButton();
+            });
+            
+            updateNextButton();
+        }
+
+        function renderContactForm() {
+            const app = document.getElementById('app');
+            
+            app.innerHTML = `
+                <div class="contact-form">
+                    <h2>📞 Как с тобой связаться?</h2>
+                    <p>Чтобы отправить тебе персональный анализ и рекомендации, нужен способ связи:</p>
+                    
+                    <div class="form-group">
+                        <label for="telegramInput">Telegram (необязательно):</label>
+                        <input type="text" id="telegramInput" placeholder="@username" 
+                               value="${state.telegramInfo || ''}" class="form-control">
+                        <small class="form-text">Укажи свой Telegram для быстрой связи</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="phoneInput">Телефон (необязательно):</label>
+                        <input type="text" id="phoneInput" placeholder="+7XXXXXXXXXX" 
+                               value="${state.phoneInfo || ''}" class="form-control">
+                        <small class="form-text">Укажи номер телефона для связи</small>
+                    </div>
+                    
+                    <div class="buttons">
+                        <button class="btn btn-secondary" onclick="skipContact()">Пропустить</button>
+                        <button class="btn btn-primary" onclick="saveContact()">Сохранить и завершить</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        // === АНАЛИЗ ОТВЕТОВ ===
+        function analyzeAnswers() {
+            const answers = Object.values(state.answers);
+            const allText = answers.join(' ').toLowerCase();
+            
+            // Анализ ключевых тем
+            const themes = {
+                work: ['работа', 'карьера', 'профессия', 'бизнес', 'деньги', 'заработок'],
+                family: ['семья', 'дети', 'родители', 'муж', 'жена', 'близкие'],
+                creativity: ['творчество', 'искусство', 'музыка', 'рисование', 'писать', 'создавать'],
+                health: ['здоровье', 'спорт', 'фитнес', 'болезнь', 'лечение'],
+                travel: ['путешествие', 'мир', 'страны', 'отпуск', 'поездка'],
+                education: ['учеба', 'знания', 'образование', 'университет', 'курсы'],
+                fears: ['боюсь', 'страх', 'волнуюсь', 'переживаю', 'тревожно']
+            };
+            
+            const detectedThemes = [];
+            for (const [theme, keywords] of Object.entries(themes)) {
+                if (keywords.some(keyword => allText.includes(keyword))) {
+                    detectedThemes.push(theme);
+                }
+            }
+            
+            // Анализ эмоционального тона
+            const positiveWords = ['счастлив', 'радость', 'люблю', 'нравится', 'хорошо', 'отлично', 'замечательно'];
+            const negativeWords = ['плохо', 'грустно', 'страшно', 'трудно', 'сложно', 'проблема'];
+            
+            const positiveCount = positiveWords.filter(word => allText.includes(word)).length;
+            const negativeCount = negativeWords.filter(word => allText.includes(word)).length;
+            
+            const emotionalTone = positiveCount > negativeCount ? 'positive' : 
+                                negativeCount > positiveCount ? 'negative' : 'neutral';
+            
+            // Генерация рекомендаций
+            const recommendations = generateRecommendations(detectedThemes, emotionalTone, answers);
+            
+            return {
+                themes: detectedThemes,
+                emotionalTone: emotionalTone,
+                recommendations: recommendations,
+                totalAnswers: answers.length
+            };
+        }
+        
+        function generateRecommendations(themes, emotionalTone, answers) {
+            const recommendations = [];
+            
+            // Рекомендации по темам
+            if (themes.includes('work')) {
+                recommendations.push({
+                    type: 'career',
+                    title: '💼 Развитие карьеры',
+                    text: 'Ты много думаешь о работе. Рекомендую составить план профессионального развития и найти ментора в своей области.'
+                });
+            }
+            
+            if (themes.includes('family')) {
+                recommendations.push({
+                    type: 'relationships',
+                    title: '👨‍👩‍👧‍👦 Семейные отношения',
+                    text: 'Семья важна для тебя. Попробуй проводить больше качественного времени с близкими людьми.'
+                });
+            }
+            
+            if (themes.includes('creativity')) {
+                recommendations.push({
+                    type: 'creativity',
+                    title: '🎨 Творческое развитие',
+                    text: 'У тебя есть творческий потенциал! Выдели время для творческих проектов и не бойся экспериментировать.'
+                });
+            }
+            
+            if (themes.includes('fears')) {
+                recommendations.push({
+                    type: 'overcoming',
+                    title: '💪 Преодоление страхов',
+                    text: 'Страхи - это нормально. Попробуй разбить большие цели на маленькие шаги и действуй постепенно.'
+                });
+            }
+            
+            // Рекомендации по эмоциональному тону
+            if (emotionalTone === 'negative') {
+                recommendations.push({
+                    type: 'mindset',
+                    title: '🌱 Позитивное мышление',
+                    text: 'Попробуй практиковать благодарность и фокусироваться на том, что у тебя уже есть хорошего.'
+                });
+            }
+            
+            // Общие рекомендации
+            recommendations.push({
+                type: 'general',
+                title: '🎯 Следующие шаги',
+                text: 'Выбери одну самую важную для тебя цель и начни действовать уже сегодня. Даже маленький шаг - это прогресс!'
+            });
+            
+            return recommendations;
+        }
+
+        function renderCompletion() {
+            const totalTime = Date.now() - state.startTime;
+            const minutes = Math.floor(totalTime / 60000);
+            const seconds = Math.floor((totalTime % 60000) / 1000);
+            
+            // Анализируем ответы
+            const analysis = analyzeAnswers();
+            
+            const app = document.getElementById('app');
+            app.innerHTML = `
+                <div class="intro">
+                    <h1>🌸 Спасибо, ${state.userName}!</h1>
+                    <p>Ты прошёл(а) все вопросы за ${minutes}:${seconds.toString().padStart(2, '0')}</p>
+                    
+                    <div class="result-box">
+                        <h3>🧠 Анализ твоих ответов</h3>
+                        <p><strong>Обнаруженные темы:</strong> ${analysis.themes.length > 0 ? analysis.themes.map(t => t.charAt(0).toUpperCase() + t.slice(1)).join(', ') : 'Общие жизненные вопросы'}</p>
+                        <p><strong>Эмоциональный тон:</strong> ${analysis.emotionalTone === 'positive' ? 'Позитивный 😊' : analysis.emotionalTone === 'negative' ? 'Требует внимания 🤔' : 'Сбалансированный 😐'}</p>
+                    </div>
+                    
+                    <div class="result-box">
+                        <h3>💡 Персональные рекомендации</h3>
+                        ${analysis.recommendations.map(rec => `
+                            <div style="margin-bottom: 20px; padding: 15px; background: #f8f9ff; border-radius: 12px; border-left: 4px solid #7e22ce;">
+                                <h4 style="color: #7e22ce; margin-bottom: 8px;">${rec.title}</h4>
+                                <p style="color: #1a1a1a; margin: 0;">${rec.text}</p>
+                            </div>
+                        `).join('')}
+                    </div>
+                    
+                    <div class="result-box">
+                        <h3>📱 Как получить больше?</h3>
+                        <p>Если ты указал(а) Telegram или телефон, мы свяжемся с тобой в течение 24 часов с расширенным анализом и персональным планом развития!</p>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="location.reload()" style="width: 100%; margin-top: 30px;">
+                        Пройти ещё раз 🔄
+                    </button>
+                </div>
+            `;
+        }
+
+        function updateNextButton() {
+            const btn = document.getElementById('nextBtn');
+            const input = document.getElementById('answerInput');
+            if (btn && input) {
+                btn.disabled = input.value.trim().length < 1;
+            }
+        }
+
+        async function saveContact() {
+            const telegramInput = document.getElementById('telegramInput');
+            const phoneInput = document.getElementById('phoneInput');
+            
+            state.telegramInfo = telegramInput.value.trim();
+            state.phoneInfo = phoneInput.value.trim();
+            
+            // Формируем контактную информацию
+            const contactInfo = [];
+            if (state.telegramInfo) contactInfo.push(`Telegram: ${state.telegramInfo}`);
+            if (state.phoneInfo) contactInfo.push(`Телефон: ${state.phoneInfo}`);
+            const fullContactInfo = contactInfo.join(', ') || 'Не указано';
+            
+            // Сохраняем контактную информацию в БД
+            try {
+                await apiPost('/tables/bloom_questionnaire_completions', {
+                    user_id: state.userId,
+                    contact_info: fullContactInfo,
+                    telegram_info: state.telegramInfo,
+                    phone_info: state.phoneInfo,
+                    completed_at: new Date().toISOString()
+                });
+            } catch (e) {
+                console.log('Contact info save error:', e);
+            }
+            
+            // Показываем завершение
+            renderCompletion();
+        }
+
+        function skipContact() {
+            state.telegramInfo = '';
+            state.phoneInfo = '';
+            renderCompletion();
+        }
+
+        function start() {
+            state.currentQuestion = 0;
+            state.startTime = Date.now();
+            state.questionStartTime = Date.now();
+            render();
+        }
+
+        async function next() {
+            const input = document.getElementById('answerInput');
+            const statusDiv = document.getElementById('saveStatus');
+            const nextBtn = document.getElementById('nextBtn');
+            
+            if (!input || input.value.trim().length < 1) return;
+
+            const answer = input.value.trim();
+            const timeSpent = Date.now() - state.questionStartTime;
+
+            // Блокируем кнопку
+            if (nextBtn) nextBtn.disabled = true;
+
+            try {
+                statusDiv.innerHTML = '💾 Сохраняю...';
+                
+                await saveAnswer(
+                    state.currentQuestion,
+                    state.questions[state.currentQuestion],
+                    answer,
+                    timeSpent
+                );
+
+                state.answers[state.currentQuestion] = answer;
+                
+                statusDiv.innerHTML = '✅ Сохранено!';
+                
+                setTimeout(async () => {
+                    state.currentQuestion++;
+                    
+                    if (state.currentQuestion >= state.questions.length) {
+                        const totalTime = Date.now() - state.startTime;
+                        try {
+                            await completeQuestionnaire(totalTime);
+                        } catch (e) {
+                            console.log('Completion already saved or error:', e);
+                        }
+                        // Показываем завершение сразу
+                        renderCompletion();
+                    } else {
+                        state.questionStartTime = Date.now();
+                        render();
+                    }
+                }, 500);
+                
+            } catch (error) {
+                console.error(error);
+                statusDiv.innerHTML = '❌ Ошибка сохранения. Попробуй ещё раз.';
+                // Разблокируем кнопку при ошибке
+                if (nextBtn) nextBtn.disabled = false;
+            }
+        }
+
+        function prev() {
+            if (state.currentQuestion > 0) {
+                state.currentQuestion--;
+                state.questionStartTime = Date.now();
+                render();
+            }
+        }
+
+        // === ИНИЦИАЛИЗАЦИЯ ===
+        window.authenticate = authenticate;
+        window.start = start;
+        window.next = next;
+        window.prev = prev;
+
+        // Проверяем подключение к API при загрузке
+        (async () => {
+            try {
+                await apiGet('/health');
+                render();
+            } catch (error) {
+                document.getElementById('app').innerHTML = `
+                    <div class="error-message">
+                        ⚠️ Не удалось подключиться к серверу.<br>
+                        Убедись, что API сервер запущен на ${API_URL}
+                    </div>
+                `;
+            }
+        })();
+    </script>
+</body>
+</html>
+
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BLOOM — Найди свою цель</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #7e22ce 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            color: white;
+        }
+
+        .container {
+            max-width: 700px;
+            width: 100%;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 24px;
+            padding: 50px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            color: #1a1a1a;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .progress {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 40px;
+        }
+
+        .progress-dot {
+            flex: 1;
+            height: 4px;
+            background: #e0e0e0;
+            border-radius: 2px;
+            transition: all 0.3s;
+        }
+
+        .progress-dot.active {
+            background: linear-gradient(90deg, #7e22ce, #2a5298);
+        }
+
+        .question-number {
+            color: #7e22ce;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .question {
+            font-size: 28px;
+            font-weight: 600;
+            line-height: 1.4;
+            margin-bottom: 40px;
+            color: #1a1a1a;
+        }
+
+        .answer {
+            width: 100%;
+            min-height: 120px;
+            padding: 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 16px;
+            font-size: 16px;
+            font-family: inherit;
+            resize: vertical;
+            outline: none;
+            transition: all 0.3s;
+            margin-bottom: 30px;
+        }
+
+        .answer:focus {
+            border-color: #7e22ce;
+            box-shadow: 0 0 0 4px rgba(126, 34, 206, 0.1);
+        }
+
+        .buttons {
+            display: flex;
+            gap: 16px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 16px 32px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #7e22ce 0%, #2a5298 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(126, 34, 206, 0.3);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #666;
+        }
+
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+
+        .completion {
+            text-align: center;
+        }
+
+        .completion h2 {
+            font-size: 36px;
+            margin-bottom: 20px;
+            color: #7e22ce;
+        }
+
+        .completion p {
+            font-size: 18px;
+            line-height: 1.6;
+            margin-bottom: 30px;
+            color: #666;
+        }
+
+        .result-box {
+            background: #f8f9ff;
+            padding: 30px;
+            border-radius: 16px;
+            margin: 30px 0;
+            border-left: 4px solid #7e22ce;
+        }
+
+        .result-box h3 {
+            color: #7e22ce;
+            margin-bottom: 15px;
+        }
+
+        .result-box p {
+            color: #1a1a1a;
+            font-size: 16px;
+            line-height: 1.6;
+        }
+
+        .intro {
+            text-align: center;
+        }
+
+        .intro h1 {
+            font-size: 42px;
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, #7e22ce 0%, #2a5298 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .intro p {
+            font-size: 18px;
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 40px;
+        }
+
+        .auth-input {
+            width: 100%;
+            padding: 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            font-size: 16px;
+            margin-bottom: 20px;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        .auth-input:focus {
+            border-color: #7e22ce;
+            box-shadow: 0 0 0 4px rgba(126, 34, 206, 0.1);
+        }
+
+        .error-message {
+            background: #fee;
+            color: #c33;
+            padding: 16px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #7e22ce;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .save-status {
+            text-align: center;
+            margin-bottom: 10px;
+            color: #999;
+            font-size: 14px;
+            min-height: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card" id="app">
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>Загрузка...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // === КОНФИГУРАЦИЯ ===
+        const API_URL = 'https://marabot.tw1.ru';
+        
+        const BASE_QUESTIONS = [
+            { text: "{name}, что для тебя по-настоящему важно в жизни прямо сейчас?", minAge: 5 },
+            { text: "{name}, если бы у тебя было неограниченное время и ресурсы, чем бы ты занимался?", minAge: 5 },
+            { text: "Чего ты боишься больше всего?", minAge: 5 },
+            { text: "Что бы ты сделал(а), если бы точно знал(а), что не провалишься?", minAge: 7 },
+            { text: "{name}, каким человеком ты хочешь быть через год?", minAge: 5 },
+            { text: "Что ты хочешь, чтобы о тебе говорили люди?", minAge: 8 },
+            { text: "Какую проблему в мире ты хотел(а) бы решить?", minAge: 8 },
+            { text: "Что делает тебя по-настоящему счастливым?", minAge: 5 },
+            { text: "Если бы тебе осталось жить год, как бы ты его прожил(а)?", minAge: 14 },
+            { text: "Что ты откладываешь уже долгое время?", minAge: 10 },
+            { text: "Какой след ты хочешь оставить в этом мире?", minAge: 12 },
+            { text: "{name}, что бы ты посоветовал(а) себе 10 лет назад?", minAge: 20 },
+            { text: "Что тебя вдохновляет и заряжает энергией?", minAge: 5 },
+            { text: "От чего ты готов(а) отказаться ради своей цели?", minAge: 10 },
+            { text: "Как ты поймёшь, что достиг(ла) успеха?", minAge: 8 },
+            { text: "Что мешает тебе начать прямо сейчас?", minAge: 8 },
+            { text: "Какие у тебя есть сильные стороны, {name}?", minAge: 5 },
+            { text: "Кто те люди, которых ты хочешь сделать счастливее?", minAge: 5 },
+            { text: "Что ты будешь чувствовать, когда достигнешь своей цели?", minAge: 5 },
+            { text: "Какой первый шаг ты можешь сделать уже сегодня?", minAge: 5 }
+        ];
+
+        // === СОСТОЯНИЕ ===
+        let state = {
+            userName: '',
+            userAge: null,
+            userId: null,
+            telegramId: null,
+            currentQuestion: -2, // -2 = auth, -1 = intro, 0+ = questions
+            answers: {},
+            questions: [],
+            startTime: null,
+            questionStartTime: null
+        };
+
+        // === API ФУНКЦИИ ===
+        async function apiGet(endpoint) {
+            const response = await fetch(`${API_URL}${endpoint}`);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            return await response.json();
+        }
+
+        async function apiPost(endpoint, data) {
+            const response = await fetch(`${API_URL}${endpoint}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            return await response.json();
+        }
+
+        async function getUserByTelegramId(telegramId) {
+            const result = await apiGet(`/tables/users?where.telegram_id=${telegramId}`);
+            return result.rows && result.rows.length > 0 ? result.rows[0] : null;
+        }
+
+        async function saveAnswer(questionNumber, questionText, answer, timeSpent) {
+            return await apiPost('/tables/bloom_questionnaire_responses', {
+                user_id: state.userId,
+                user_name: state.userName,
+                user_age: state.userAge,
+                question_number: questionNumber + 1,
+                question_text: questionText,
+                answer: answer,
+                time_spent_seconds: Math.floor(timeSpent / 1000)
+            });
+        }
+
+        async function completeQuestionnaire(totalTime) {
+            return await apiPost('/tables/bloom_questionnaire_completions', {
+                user_id: state.userId,
+                total_time_seconds: Math.floor(totalTime / 1000),
+                device_info: navigator.userAgent,
+                browser_info: navigator.platform
+            });
+        }
+
+        // === ВОПРОСЫ С ФИЛЬТРАЦИЕЙ ПО ВОЗРАСТУ ===
+        function getQuestionsForAge(age) {
+            return BASE_QUESTIONS
+                .filter(q => age >= q.minAge)
+                .map(q => q.text.replace('{name}', state.userName));
+        }
+
+        // === UI ФУНКЦИИ ===
+        function render() {
+            const app = document.getElementById('app');
+            
+            if (state.currentQuestion === -2) {
+                renderAuth();
+            } else if (state.currentQuestion === -1) {
+                renderIntro();
+            } else if (state.currentQuestion < state.questions.length) {
+                renderQuestion();
+            } else {
+                renderCompletion();
+            }
+        }
+
+        function renderAuth() {
+            const app = document.getElementById('app');
+            app.innerHTML = `
+                <div class="intro">
+                    <h1>🌸 BLOOM</h1>
+                    <p>AI-помощник в поиске твоей цели</p>
+                    <p style="font-size: 16px; color: #999; margin-bottom: 30px;">
+                        Привет! Давай познакомимся 👋
+                    </p>
+                    <input 
+                        type="text" 
+                        class="auth-input" 
+                        id="nameInput" 
+                        placeholder="Как тебя зовут?"
+                        autofocus
+                    />
+                    <input 
+                        type="number" 
+                        class="auth-input" 
+                        id="ageInput" 
+                        placeholder="Сколько тебе лет?"
+                        min="5"
+                        max="120"
+                    />
+                    <div id="authMessage"></div>
+                    <button class="btn btn-primary" onclick="authenticate()" style="width: 100%;">
+                        Начать! →
+                    </button>
+                </div>
+            `;
+        }
+
+        async function authenticate() {
+            const nameInput = document.getElementById('nameInput');
+            const ageInput = document.getElementById('ageInput');
+            const messageDiv = document.getElementById('authMessage');
+            
+            const name = nameInput.value.trim();
+            const age = parseInt(ageInput.value);
+
+            if (!name) {
+                messageDiv.innerHTML = '<div class="error-message">Напиши своё имя 😊</div>';
+                return;
+            }
+
+            if (!age || age < 5 || age > 120) {
+                messageDiv.innerHTML = '<div class="error-message">Укажи свой возраст (от 5 до 120 лет)</div>';
+                return;
+            }
+
+            state.userName = name;
+            state.userAge = age;
+            state.questions = getQuestionsForAge(age);
+
+            try {
+                messageDiv.innerHTML = '<div class="loading"><div class="spinner"></div><p>Готовлю вопросы...</p></div>';
+                
+                // Проверяем Telegram ID из URL (если есть)
+                const urlParams = new URLSearchParams(window.location.search);
+                const telegramId = urlParams.get('telegram_id');
+                
+                if (telegramId) {
+                    const user = await getUserByTelegramId(parseInt(telegramId));
+                    if (user) {
+                        state.userId = user.id;
+                        state.telegramId = telegramId;
+                    }
+                }
+
+                // user_id может быть NULL - это нормально
+                // Имя и возраст сохраняются в каждом ответе
+
+                state.currentQuestion = -1;
+                render();
+                
+            } catch (error) {
+                console.error(error);
+                messageDiv.innerHTML = '<div class="error-message">Ошибка подключения к серверу 😔</div>';
+            }
+        }
+
+        function renderIntro() {
+            const app = document.getElementById('app');
+            
+            app.innerHTML = `
+                <div class="intro">
+                    <h1>🌸 BLOOM</h1>
+                    <p>
+                        Отлично, <strong>${state.userName}</strong>! 
+                    </p>
+                    <p>
+                        Я задам тебе <strong>${state.questions.length} вопросов</strong>, которые помогут тебе лучше понять себя.<br>
+                        Отвечай честно, не спеши.<br>
+                        Здесь нет правильных или неправильных ответов.
+                    </p>
+                    <p style="margin-top: 30px; font-size: 16px; color: #999;">
+                        ⏱️ Это займёт примерно ${Math.ceil(state.questions.length * 1.5)} минут<br>
+                        💾 Ответы сохраняются автоматически<br>
+                        🔄 Можешь вернуться в любой момент
+                    </p>
+                    <button class="btn btn-primary" onclick="start()" style="margin-top: 40px; width: 100%;">
+                        Поехали! →
+                    </button>
+                </div>
+            `;
+        }
+
+        function renderQuestion() {
+            const app = document.getElementById('app');
+            const progress = state.questions.map((_, i) => 
+                `<div class="progress-dot ${i <= state.currentQuestion ? 'active' : ''}"></div>`
+            ).join('');
+            
+            app.innerHTML = `
+                <div class="progress">${progress}</div>
+                <div class="question-number">Вопрос ${state.currentQuestion + 1} из ${state.questions.length}</div>
+                <div class="question">${state.questions[state.currentQuestion]}</div>
+                <textarea 
+                    class="answer" 
+                    id="answerInput"
+                    placeholder="Напиши свой ответ здесь..."
+                    autofocus
+                >${state.answers[state.currentQuestion] || ''}</textarea>
+                <div class="save-status" id="saveStatus"></div>
+                <div class="buttons">
+                    ${state.currentQuestion > 0 ? '<button class="btn btn-secondary" onclick="prev()">← Назад</button>' : '<div></div>'}
+                    <button class="btn btn-primary" onclick="next()" id="nextBtn">
+                        ${state.currentQuestion === state.questions.length - 1 ? 'Завершить! →' : 'Далее →'}
+                    </button>
+                </div>
+            `;
+            
+            const textarea = document.getElementById('answerInput');
+            textarea.addEventListener('input', () => {
+                state.answers[state.currentQuestion] = textarea.value;
+                updateNextButton();
+            });
+            
+            updateNextButton();
+        }
+
+        function renderCompletion() {
+            const app = document.getElementById('app');
+            
+            app.innerHTML = `
+                <div class="completion">
+                    <h2>🎉 ${state.userName}, поздравляю!</h2>
+                    <p>Ты прошёл(ла) весь путь самопознания!</p>
+                    
+                    <div class="result-box">
+                        <h3>✅ Твои ответы сохранены</h3>
+                        <p>
+                            Я проанализирую их и скоро дам тебе подробный фидбек.<br>
+                            Твой персональный план развития уже в работе! 💚
+                        </p>
+                    </div>
+
+                    <div class="result-box">
+                        <h3>🎖️ Ты — первопроходец!</h3>
+                        <p>
+                            Ты один(на) из первых, кто протестировал проект BLOOM.<br>
+                            Спасибо за участие! Твоя обратная связь очень важна.
+                        </p>
+                    </div>
+
+                    <p style="margin-top: 40px; font-size: 16px; color: #666;">
+                        💌 Скоро мы свяжемся с тобой с результатами!
+                    </p>
+                </div>
+            `;
+        }
+
+        function updateNextButton() {
+            const btn = document.getElementById('nextBtn');
+            const input = document.getElementById('answerInput');
+            if (btn && input) {
+                btn.disabled = input.value.trim().length < 1;
+            }
+        }
+
+        function start() {
+            state.currentQuestion = 0;
+            state.startTime = Date.now();
+            state.questionStartTime = Date.now();
+            render();
+        }
+
+        async function next() {
+            const input = document.getElementById('answerInput');
+            const statusDiv = document.getElementById('saveStatus');
+            const nextBtn = document.getElementById('nextBtn');
+            
+            if (!input || input.value.trim().length < 1) return;
+
+            const answer = input.value.trim();
+            const timeSpent = Date.now() - state.questionStartTime;
+
+            // Блокируем кнопку
+            if (nextBtn) nextBtn.disabled = true;
+
+            try {
+                statusDiv.innerHTML = '💾 Сохраняю...';
+                
+                await saveAnswer(
+                    state.currentQuestion,
+                    state.questions[state.currentQuestion],
+                    answer,
+                    timeSpent
+                );
+
+                state.answers[state.currentQuestion] = answer;
+                
+                statusDiv.innerHTML = '✅ Сохранено!';
+                
+                setTimeout(async () => {
+                    state.currentQuestion++;
+                    
+                    if (state.currentQuestion >= state.questions.length) {
+                        const totalTime = Date.now() - state.startTime;
+                        try {
+                            await completeQuestionnaire(totalTime);
+                        } catch (e) {
+                            console.log('Completion already saved or error:', e);
+                        }
+                        render();
+                    } else {
+                        state.questionStartTime = Date.now();
+                        render();
+                    }
+                }, 500);
+                
+            } catch (error) {
+                console.error(error);
+                statusDiv.innerHTML = '❌ Ошибка сохранения. Попробуй ещё раз.';
+                // Разблокируем кнопку при ошибке
+                if (nextBtn) nextBtn.disabled = false;
+            }
+        }
+
+        function prev() {
+            if (state.currentQuestion > 0) {
+                state.currentQuestion--;
+                state.questionStartTime = Date.now();
+                render();
+            }
+        }
+
+        // === ИНИЦИАЛИЗАЦИЯ ===
+        window.authenticate = authenticate;
+        window.start = start;
+        window.next = next;
+        window.prev = prev;
+
+        // Проверяем подключение к API при загрузке
+        (async () => {
+            try {
+                await apiGet('/health');
+                render();
+            } catch (error) {
+                document.getElementById('app').innerHTML = `
+                    <div class="error-message">
+                        ⚠️ Не удалось подключиться к серверу.<br>
+                        Убедись, что API сервер запущен на ${API_URL}
+                    </div>
+                `;
+            }
+        })();
+    </script>
+</body>
+</html>
+

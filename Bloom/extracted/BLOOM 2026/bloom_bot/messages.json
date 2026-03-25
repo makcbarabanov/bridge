@@ -1,0 +1,83 @@
+[]
+[
+  {
+    "id": 1,
+    "user_id": 310055372,
+    "username": "Makc_Barabanov",
+    "text": "Привет, Блум дружище! Это тест! Уверен, что он сработает с первого раза",
+    "timestamp": "2025-10-14T23:18:17.695766",
+    "status": "read"
+  },
+  {
+    "id": 2,
+    "user_id": 310055372,
+    "username": "Makc_Barabanov",
+    "text": "Привет, Блум!",
+    "timestamp": "2025-10-14T23:21:44.362586",
+    "status": "read"
+  },
+  {
+    "id": 3,
+    "user_id": 310055372,
+    "username": "Makc_Barabanov",
+    "text": "Тест 23:29",
+    "timestamp": "2025-10-14T23:29:32.512921",
+    "status": "read"
+  },
+  {
+    "id": 4,
+    "user_id": 310055372,
+    "username": "Makc_Barabanov",
+    "text": "Тест 2332",
+    "timestamp": "2025-10-14T23:32:07.247292",
+    "status": "read"
+  },
+  {
+    "id": 5,
+    "user_id": 310055372,
+    "username": "Makc_Barabanov",
+    "text": "Тест 2339",
+    "timestamp": "2025-10-14T23:39:38.396696",
+    "status": "read"
+  },
+  {
+    "id": 6,
+    "user_id": 310055372,
+    "username": "Makc_Barabanov",
+    "text": "тест 2341",
+    "timestamp": "2025-10-14T23:42:01.678590",
+    "status": "read"
+  },
+  {
+    "id": 7,
+    "user_id": 310055372,
+    "username": "Makc_Barabanov",
+    "text": "Привет Тест 2344",
+    "timestamp": "2025-10-14T23:44:23.967349",
+    "status": "read"
+  },
+  {
+    "id": 8,
+    "user_id": 310055372,
+    "username": "Makc_Barabanov",
+    "text": "уверен?",
+    "timestamp": "2025-10-14T23:47:29.066457",
+    "status": "new"
+  },
+  {
+    "id": 9,
+    "user_id": 310055372,
+    "username": "Makc_Barabanov",
+    "text": "могу",
+    "timestamp": "2025-10-14T23:47:38.698471",
+    "status": "new"
+  },
+  {
+    "id": 10,
+    "user_id": 310055372,
+    "username": "Makc_Barabanov",
+    "text": "а курсор открыт",
+    "timestamp": "2025-10-14T23:47:49.134459",
+    "status": "new"
+  }
+]

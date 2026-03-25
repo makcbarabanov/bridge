@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BLOOM — Найди свою цель</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #7e22ce 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            color: white;
+        }
+
+        .container {
+            max-width: 700px;
+            width: 100%;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 24px;
+            padding: 50px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            color: #1a1a1a;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .progress {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 40px;
+        }
+
+        .progress-dot {
+            flex: 1;
+            height: 4px;
+            background: #e0e0e0;
+            border-radius: 2px;
+            transition: all 0.3s;
+        }
+
+        .progress-dot.active {
+            background: linear-gradient(90deg, #7e22ce, #2a5298);
+        }
+
+        .question-number {
+            color: #7e22ce;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .question {
+            font-size: 28px;
+            font-weight: 600;
+            line-height: 1.4;
+            margin-bottom: 40px;
+            color: #1a1a1a;
+        }
+
+        .answer {
+            width: 100%;
+            min-height: 120px;
+            padding: 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 16px;
+            font-size: 16px;
+            font-family: inherit;
+            resize: vertical;
+            outline: none;
+            transition: all 0.3s;
+            margin-bottom: 30px;
+        }
+
+        .answer:focus {
+            border-color: #7e22ce;
+            box-shadow: 0 0 0 4px rgba(126, 34, 206, 0.1);
+        }
+
+        .buttons {
+            display: flex;
+            gap: 16px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 16px 32px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #7e22ce 0%, #2a5298 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(126, 34, 206, 0.3);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #666;
+        }
+
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+
+        .completion {
+            text-align: center;
+        }
+
+        .completion h2 {
+            font-size: 36px;
+            margin-bottom: 20px;
+            color: #7e22ce;
+        }
+
+        .completion p {
+            font-size: 18px;
+            line-height: 1.6;
+            margin-bottom: 30px;
+            color: #666;
+        }
+
+        .result-box {
+            background: #f8f9ff;
+            padding: 30px;
+            border-radius: 16px;
+            margin: 30px 0;
+            border-left: 4px solid #7e22ce;
+        }
+
+        .result-box h3 {
+            color: #7e22ce;
+            margin-bottom: 15px;
+        }
+
+        .result-box p {
+            color: #1a1a1a;
+            font-size: 16px;
+            line-height: 1.6;
+        }
+
+        .intro {
+            text-align: center;
+        }
+
+        .intro h1 {
+            font-size: 42px;
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, #7e22ce 0%, #2a5298 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .intro p {
+            font-size: 18px;
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 40px;
+        }
+
+        .auth-input {
+            width: 100%;
+            padding: 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            font-size: 16px;
+            margin-bottom: 20px;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        .auth-input:focus {
+            border-color: #7e22ce;
+            box-shadow: 0 0 0 4px rgba(126, 34, 206, 0.1);
+        }
+
+        .error-message {
+            background: #fee;
+            color: #c33;
+            padding: 16px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #7e22ce;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .save-status {
+            text-align: center;
+            margin-bottom: 10px;
+            color: #999;
+            font-size: 14px;
+            min-height: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card" id="app">
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>Загрузка...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // === КОНФИГУРАЦИЯ ===
+        const API_URL = 'https://marabot.tw1.ru';
+        
+        const BASE_QUESTIONS = [
+            { text: "{name}, что для тебя по-настоящему важно в жизни прямо сейчас?", minAge: 5 },
+            { text: "{name}, если бы у тебя было неограниченное время и ресурсы, чем бы ты занимался?", minAge: 5 },
+            { text: "Чего ты боишься больше всего?", minAge: 5 },
+            { text: "Что бы ты сделал(а), если бы точно знал(а), что не провалишься?", minAge: 7 },
+            { text: "{name}, каким человеком ты хочешь быть через год?", minAge: 5 },
+            { text: "Что ты хочешь, чтобы о тебе говорили люди?", minAge: 8 },
+            { text: "Какую проблему в мире ты хотел(а) бы решить?", minAge: 8 },
+            { text: "Что делает тебя по-настоящему счастливым?", minAge: 5 },
+            { text: "Если бы тебе осталось жить год, как бы ты его прожил(а)?", minAge: 14 },
+            { text: "Что ты откладываешь уже долгое время?", minAge: 10 },
+            { text: "Какой след ты хочешь оставить в этом мире?", minAge: 12 },
+            { text: "{name}, что бы ты посоветовал(а) себе 10 лет назад?", minAge: 20 },
+            { text: "Что тебя вдохновляет и заряжает энергией?", minAge: 5 },
+            { text: "От чего ты готов(а) отказаться ради своей цели?", minAge: 10 },
+            { text: "Как ты поймёшь, что достиг(ла) успеха?", minAge: 8 },
+            { text: "Что мешает тебе начать прямо сейчас?", minAge: 8 },
+            { text: "Какие у тебя есть сильные стороны, {name}?", minAge: 5 },
+            { text: "Кто те люди, которых ты хочешь сделать счастливее?", minAge: 5 },
+            { text: "Что ты будешь чувствовать, когда достигнешь своей цели?", minAge: 5 },
+            { text: "Какой первый шаг ты можешь сделать уже сегодня?", minAge: 5 }
+        ];
+
+        // === СОСТОЯНИЕ ===
+        let state = {
+            userName: '',
+            userAge: null,
+            userId: null,
+            telegramId: null,
+            currentQuestion: -2, // -2 = auth, -1 = intro, 0+ = questions
+            answers: {},
+            questions: [],
+            startTime: null,
+            questionStartTime: null
+        };
+
+        // === API ФУНКЦИИ ===
+        async function apiGet(endpoint) {
+            const response = await fetch(`${API_URL}${endpoint}`);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            return await response.json();
+        }
+
+        async function apiPost(endpoint, data) {
+            const response = await fetch(`${API_URL}${endpoint}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            return await response.json();
+        }
+
+        async function getUserByTelegramId(telegramId) {
+            const result = await apiGet(`/tables/users?where.telegram_id=${telegramId}`);
+            return result.rows && result.rows.length > 0 ? result.rows[0] : null;
+        }
+
+        async function saveAnswer(questionNumber, questionText, answer, timeSpent) {
+            return await apiPost('/tables/bloom_questionnaire_responses', {
+                user_id: state.userId,
+                user_name: state.userName,
+                user_age: state.userAge,
+                question_number: questionNumber + 1,
+                question_text: questionText,
+                answer: answer,
+                time_spent_seconds: Math.floor(timeSpent / 1000)
+            });
+        }
+
+        async function completeQuestionnaire(totalTime) {
+            return await apiPost('/tables/bloom_questionnaire_completions', {
+                user_id: state.userId,
+                total_time_seconds: Math.floor(totalTime / 1000),
+                device_info: navigator.userAgent,
+                browser_info: navigator.platform
+            });
+        }
+
+        // === ВОПРОСЫ С ФИЛЬТРАЦИЕЙ ПО ВОЗРАСТУ ===
+        function getQuestionsForAge(age) {
+            return BASE_QUESTIONS
+                .filter(q => age >= q.minAge)
+                .map(q => q.text.replace('{name}', state.userName));
+        }
+
+        // === UI ФУНКЦИИ ===
+        function render() {
+            const app = document.getElementById('app');
+            
+            if (state.currentQuestion === -2) {
+                renderAuth();
+            } else if (state.currentQuestion === -1) {
+                renderIntro();
+            } else if (state.currentQuestion < state.questions.length) {
+                renderQuestion();
+            } else {
+                renderCompletion();
+            }
+        }
+
+        function renderAuth() {
+            const app = document.getElementById('app');
+            app.innerHTML = `
+                <div class="intro">
+                    <h1>🌸 BLOOM</h1>
+                    <p>AI-помощник в поиске твоей цели</p>
+                    <p style="font-size: 16px; color: #999; margin-bottom: 30px;">
+                        Привет! Давай познакомимся 👋
+                    </p>
+                    <input 
+                        type="text" 
+                        class="auth-input" 
+                        id="nameInput" 
+                        placeholder="Как тебя зовут?"
+                        autofocus
+                    />
+                    <input 
+                        type="number" 
+                        class="auth-input" 
+                        id="ageInput" 
+                        placeholder="Сколько тебе лет?"
+                        min="5"
+                        max="120"
+                    />
+                    <div id="authMessage"></div>
+                    <button class="btn btn-primary" onclick="authenticate()" style="width: 100%;">
+                        Начать! →
+                    </button>
+                </div>
+            `;
+        }
+
+        async function authenticate() {
+            const nameInput = document.getElementById('nameInput');
+            const ageInput = document.getElementById('ageInput');
+            const messageDiv = document.getElementById('authMessage');
+            
+            const name = nameInput.value.trim();
+            const age = parseInt(ageInput.value);
+
+            if (!name) {
+                messageDiv.innerHTML = '<div class="error-message">Напиши своё имя 😊</div>';
+                return;
+            }
+
+            if (!age || age < 5 || age > 120) {
+                messageDiv.innerHTML = '<div class="error-message">Укажи свой возраст (от 5 до 120 лет)</div>';
+                return;
+            }
+
+            state.userName = name;
+            state.userAge = age;
+            state.questions = getQuestionsForAge(age);
+
+            try {
+                messageDiv.innerHTML = '<div class="loading"><div class="spinner"></div><p>Готовлю вопросы...</p></div>';
+                
+                // Проверяем Telegram ID из URL (если есть)
+                const urlParams = new URLSearchParams(window.location.search);
+                const telegramId = urlParams.get('telegram_id');
+                
+                if (telegramId) {
+                    const user = await getUserByTelegramId(parseInt(telegramId));
+                    if (user) {
+                        state.userId = user.id;
+                        state.telegramId = telegramId;
+                    }
+                }
+
+                // user_id может быть NULL - это нормально
+                // Имя и возраст сохраняются в каждом ответе
+
+                state.currentQuestion = -1;
+                render();
+                
+            } catch (error) {
+                console.error(error);
+                messageDiv.innerHTML = '<div class="error-message">Ошибка подключения к серверу 😔</div>';
+            }
+        }
+
+        function renderIntro() {
+            const app = document.getElementById('app');
+            
+            app.innerHTML = `
+                <div class="intro">
+                    <h1>🌸 BLOOM</h1>
+                    <p>
+                        Отлично, <strong>${state.userName}</strong>! 
+                    </p>
+                    <p>
+                        Я задам тебе <strong>${state.questions.length} вопросов</strong>, которые помогут тебе лучше понять себя.<br>
+                        Отвечай честно, не спеши.<br>
+                        Здесь нет правильных или неправильных ответов.
+                    </p>
+                    <p style="margin-top: 30px; font-size: 16px; color: #999;">
+                        ⏱️ Это займёт примерно ${Math.ceil(state.questions.length * 1.5)} минут<br>
+                        💾 Ответы сохраняются автоматически<br>
+                        🔄 Можешь вернуться в любой момент
+                    </p>
+                    <button class="btn btn-primary" onclick="start()" style="margin-top: 40px; width: 100%;">
+                        Поехали! →
+                    </button>
+                </div>
+            `;
+        }
+
+        function renderQuestion() {
+            const app = document.getElementById('app');
+            const progress = state.questions.map((_, i) => 
+                `<div class="progress-dot ${i <= state.currentQuestion ? 'active' : ''}"></div>`
+            ).join('');
+            
+            app.innerHTML = `
+                <div class="progress">${progress}</div>
+                <div class="question-number">Вопрос ${state.currentQuestion + 1} из ${state.questions.length}</div>
+                <div class="question">${state.questions[state.currentQuestion]}</div>
+                <textarea 
+                    class="answer" 
+                    id="answerInput"
+                    placeholder="Напиши свой ответ здесь..."
+                    autofocus
+                >${state.answers[state.currentQuestion] || ''}</textarea>
+                <div class="save-status" id="saveStatus"></div>
+                <div class="buttons">
+                    ${state.currentQuestion > 0 ? '<button class="btn btn-secondary" onclick="prev()">← Назад</button>' : '<div></div>'}
+                    <button class="btn btn-primary" onclick="next()" id="nextBtn">
+                        ${state.currentQuestion === state.questions.length - 1 ? 'Завершить! →' : 'Далее →'}
+                    </button>
+                </div>
+            `;
+            
+            const textarea = document.getElementById('answerInput');
+            textarea.addEventListener('input', () => {
+                state.answers[state.currentQuestion] = textarea.value;
+                updateNextButton();
+            });
+            
+            updateNextButton();
+        }
+
+        function renderCompletion() {
+            const app = document.getElementById('app');
+            
+            app.innerHTML = `
+                <div class="completion">
+                    <h2>🎉 ${state.userName}, поздравляю!</h2>
+                    <p>Ты прошёл(ла) весь путь самопознания!</p>
+                    
+                    <div class="result-box">
+                        <h3>✅ Твои ответы сохранены</h3>
+                        <p>
+                            Я проанализирую их и скоро дам тебе подробный фидбек.<br>
+                            Твой персональный план развития уже в работе! 💚
+                        </p>
+                    </div>
+
+                    <div class="result-box">
+                        <h3>🎖️ Ты — первопроходец!</h3>
+                        <p>
+                            Ты один(на) из первых, кто протестировал проект BLOOM.<br>
+                            Спасибо за участие! Твоя обратная связь очень важна.
+                        </p>
+                    </div>
+
+                    <p style="margin-top: 40px; font-size: 16px; color: #666;">
+                        💌 Скоро мы свяжемся с тобой с результатами!
+                    </p>
+                </div>
+            `;
+        }
+
+        function updateNextButton() {
+            const btn = document.getElementById('nextBtn');
+            const input = document.getElementById('answerInput');
+            if (btn && input) {
+                btn.disabled = input.value.trim().length < 1;
+            }
+        }
+
+        function start() {
+            state.currentQuestion = 0;
+            state.startTime = Date.now();
+            state.questionStartTime = Date.now();
+            render();
+        }
+
+        async function next() {
+            const input = document.getElementById('answerInput');
+            const statusDiv = document.getElementById('saveStatus');
+            const nextBtn = document.getElementById('nextBtn');
+            
+            if (!input || input.value.trim().length < 1) return;
+
+            const answer = input.value.trim();
+            const timeSpent = Date.now() - state.questionStartTime;
+
+            // Блокируем кнопку
+            if (nextBtn) nextBtn.disabled = true;
+
+            try {
+                statusDiv.innerHTML = '💾 Сохраняю...';
+                
+                await saveAnswer(
+                    state.currentQuestion,
+                    state.questions[state.currentQuestion],
+                    answer,
+                    timeSpent
+                );
+
+                state.answers[state.currentQuestion] = answer;
+                
+                statusDiv.innerHTML = '✅ Сохранено!';
+                
+                setTimeout(async () => {
+                    state.currentQuestion++;
+                    
+                    if (state.currentQuestion >= state.questions.length) {
+                        const totalTime = Date.now() - state.startTime;
+                        try {
+                            await completeQuestionnaire(totalTime);
+                        } catch (e) {
+                            console.log('Completion already saved or error:', e);
+                        }
+                        render();
+                    } else {
+                        state.questionStartTime = Date.now();
+                        render();
+                    }
+                }, 500);
+                
+            } catch (error) {
+                console.error(error);
+                statusDiv.innerHTML = '❌ Ошибка сохранения. Попробуй ещё раз.';
+                // Разблокируем кнопку при ошибке
+                if (nextBtn) nextBtn.disabled = false;
+            }
+        }
+
+        function prev() {
+            if (state.currentQuestion > 0) {
+                state.currentQuestion--;
+                state.questionStartTime = Date.now();
+                render();
+            }
+        }
+
+        // === ИНИЦИАЛИЗАЦИЯ ===
+        window.authenticate = authenticate;
+        window.start = start;
+        window.next = next;
+        window.prev = prev;
+
+        // Проверяем подключение к API при загрузке
+        (async () => {
+            try {
+                await apiGet('/health');
+                render();
+            } catch (error) {
+                document.getElementById('app').innerHTML = `
+                    <div class="error-message">
+                        ⚠️ Не удалось подключиться к серверу.<br>
+                        Убедись, что API сервер запущен на ${API_URL}
+                    </div>
+                `;
+            }
+        })();
+    </script>
+</body>
+</html>
+
