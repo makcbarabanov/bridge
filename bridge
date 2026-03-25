@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# Управление user systemd: bridge-bot.service
+# Добавь в PATH: export PATH="$HOME/bridge:$PATH"
+set -euo pipefail
+svc=bridge-bot.service
+case "${1:-}" in
+  start)
+    systemctl --user start "$svc"
+    ;;
+  stop)
+    systemctl --user stop "$svc"
+    ;;
+  restart)
+    systemctl --user restart "$svc"
+    ;;
+  status)
+    systemctl --user status "$svc" --no-pager
+    ;;
+  logs)
+    journalctl --user -u "$svc" -f
+    ;;
+  *)
+    echo "Использование: bridge start | stop | restart | status | logs" >&2
+    exit 1
+    ;;
+esac

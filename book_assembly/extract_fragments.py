@@ -11,9 +11,10 @@ import re
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
-BOOK_JSON = ROOT / "Книга"
-OUT_DIR = Path(__file__).resolve().parent
+# Вся книга — внутри book_assembly/ (экспорт «Книга» + сборка HTML)
+BOOK_DIR = Path(__file__).resolve().parent
+BOOK_JSON = BOOK_DIR / "Книга"
+OUT_DIR = BOOK_DIR
 
 
 def collect_strings(obj, out: list[str]) -> None:

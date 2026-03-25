@@ -5,11 +5,12 @@ import os
 import socket
 import sys
 import urllib.request
+from pathlib import Path
 
 try:
     from dotenv import load_dotenv
 
-    load_dotenv()
+    load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 except ImportError:
     pass
 
@@ -26,7 +27,11 @@ def _force_ipv4() -> None:
 
 
 def main() -> None:
-    key = os.environ.get("GOOGLE_AI_KEY") or os.environ.get("GOOGLE_API_KEY")
+    key = (
+        (os.environ.get("PRIMARY_API_KEY") or "").strip()
+        or os.environ.get("GOOGLE_AI_KEY")
+        or os.environ.get("GOOGLE_API_KEY")
+    )
     if not key:
         print("Задай GOOGLE_AI_KEY или GOOGLE_API_KEY в окружении / .env", file=sys.stderr)
         sys.exit(1)
