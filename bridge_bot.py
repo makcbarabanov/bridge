@@ -158,8 +158,14 @@ def _resolve_dialogue_path(user: types.User) -> str:
     return str(_resolve_guest_profile_dir(user) / bridge_participants.DIALOG_LOG_FILENAME)
 
 
+_TRAITS_TEMPLATE = """# Наблюдения Блума о человеке
+# Короткие маркеры: что получается, что даётся сложно, чем помочь. Bloom дополняет по мере диалога.
+
+"""
+
+
 def _ensure_profile_for_user(user: types.User) -> None:
-    """При /start: папка профиля, biography.txt (пустой, если ещё нет). Лог создаёт append_dialogue."""
+    """Папка профиля, biography.txt и bloom_traits.txt при отсутствии. Лог — в append_dialogue."""
     info = bridge_participants.resolve_participant(user)
     if info.get("folder"):
         profile_dir = Path(bridge_participants.USER_PROFILES) / info["folder"]
@@ -170,6 +176,9 @@ def _ensure_profile_for_user(user: types.User) -> None:
         bio = profile_dir / "biography.txt"
         if not bio.is_file():
             bio.write_text("", encoding="utf-8")
+        traits = profile_dir / bridge_participants.TRAITS_FILENAME
+        if not traits.is_file():
+            traits.write_text(_TRAITS_TEMPLATE, encoding="utf-8")
     except OSError as e:
         logger.warning("профиль: не создать %s: %s", profile_dir, e)
 

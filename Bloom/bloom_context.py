@@ -1,14 +1,14 @@
 """
-Контекст Блума: только файлы внутри каталога Bloom/ (канон не выносится наружу).
-Загрузка system prompt и простой поиск по архиву переписки.
+Контекст Блума: рабочие файлы в каталоге Bloom/ (см. Bloom/STRUCTURE.md).
+Архивный снимок — Bloom/archive/bloom_2026_snapshot/ (бот не читает).
 """
 from __future__ import annotations
 
 import re
 from pathlib import Path
 
-# Корень распакованного проекта BLOOM 2026 (относительно bridge/)
-_DEFAULT_BLOOM_HOME = Path(__file__).resolve().parent / "extracted" / "BLOOM 2026"
+# Корень канона: сам каталог Bloom/ (рядом с этим файлом)
+_DEFAULT_BLOOM_HOME = Path(__file__).resolve().parent
 
 _bloom_home: Path | None = None
 _dialog_corpus: str | None = None
@@ -16,7 +16,7 @@ _system_instruction: str | None = None
 
 
 def set_bloom_home(path: str | Path | None) -> None:
-    """Переопределение пути (например из env BLOOM_HOME)."""
+    """Переопределение корня канона (env BLOOM_HOME — абсолютный путь к каталогу с BLOOM_START_PROMPT.txt)."""
     global _bloom_home
     if path:
         _bloom_home = Path(path).resolve()
@@ -31,27 +31,53 @@ def bloom_home() -> Path:
     return _bloom_home
 
 
-# Высший приоритет: иначе модель повторяет «Память восстановлена» и три блока из BLOOM_START_PROMPT
+# Высший приоритет: иначе модель повторяет «Память восстановлена» и шаблоны из старых сессий IDE
 _TELEGRAM_MODE = """
 === РЕЖИМ TELEGRAM (приоритет над остальным текстом ниже) ===
-Ты отвечаешь в личке или группе Telegram. Общайся естественно: как брат и друг, тепло, по делу.
-ЗАПРЕЩЕНО в каждом ответе повторять один и тот же шаблон: фразы вроде «Память восстановлена», «Я внимательно прочитал»,
-блоки «Кто я», «Что уже живо», «Что делаю сегодня», длинные списки планов на день — если пользователь явно не просит отчёт или восстановление контекста.
-Не начинай ответ с ритуала «восстановления». Не копируй структуру «первого ответа новой сессии» в обычном диалоге.
-Структурированный формат с тремя маркерами используй ТОЛЬКО если пользователь прямо просит (например: «восстанови контекст», «напомни по пунктам кто ты»).
-В обычных сообщениях — короткий или развёрнутый живой ответ по сути вопроса, без бюрократии.
-Если в выдержках из архива есть факты — опирайся на них; не выдумывай события, которых там нет.
+Ты отвечаешь в личке или группе Telegram. Подробная роль и правила — в блоке BLOOM_START_PROMPT ниже.
 
-Приветствия: не здоровайся в **каждом** сообщении. Достаточно приветствия на /start или когда собеседник сам поздоровался.
-В остальных ответах сразу по делу, без «Привет, Макс!» и без повторного представления, если диалог уже идёт.
+ЗАПРЕЩЕНО в каждом ответе повторять один и тот же шаблон: «Память восстановлена», «Я внимательно прочитал»,
+блоки «Кто я», «Что уже живо», «Что делаю сегодня», длинные списки планов — если пользователь явно не просит отчёт или восстановление контекста.
+Не начинай ответ с ритуала «восстановления». Формат «первого ответа сессии Cursor» описан в CURSOR_BOOTSTRAP.md — в Telegram его не используй.
+
+Приветствия: не здоровайся в **каждом** сообщении. Достаточно на /start или когда собеседник сам поздоровался.
 
 Имена: в блоке «Текущий собеседник» указано, как звать человека. **Макс** — владелец бота (отдельный telegram_id).
-Не называй собеседника Максом, если в блоке сказано иное (например Костя или Света). Не путай людей между собой.
+Не называй собеседника Максом, если в блоке сказано иное. Не путай людей между собой.
+
+Публичное название продукта — **социальная сеть для целеустремлённых людей** (внутреннее имя Bridge — только для кода). Миссия проекта — приводить людей к их мечтам.
+
+Если в выдержках из memory_corpus или файлов есть факты — опирайся на них; не выдумывай события, которых там нет.
+По мере диалога дополняй **bloom_traits.txt** в папке профиля собеседника короткими наблюдениями (что даётся легко, что сложно, чем помочь) — без допроса, по делу.
 """
 
 
+def _read_trim_file(path: Path, max_chars: int) -> str:
+    if not path.is_file():
+        return ""
+    text = path.read_text(encoding="utf-8", errors="replace")
+    if len(text) <= max_chars:
+        return text.strip()
+    half = max_chars // 2
+    return (
+        text[:half]
+        + "\n\n[… середина опущена …]\n\n"
+        + text[-half:]
+    ).strip()
+
+
+def _read_tail_file(path: Path, max_chars: int) -> str:
+    """Хвост файла (для bloom_body — свежие записи)."""
+    if not path.is_file():
+        return ""
+    text = path.read_text(encoding="utf-8", errors="replace").strip()
+    if len(text) <= max_chars:
+        return text
+    return "[… более ранние записи опущены …]\n\n" + text[-max_chars:]
+
+
 def load_system_instruction() -> str:
-    """Текст для Gemini systemInstruction: стартовый промпт + начало README."""
+    """Текст для Gemini systemInstruction: режим Telegram + BLOOM_START_PROMPT + опционально биография/тело + README."""
     global _system_instruction
     if _system_instruction is not None:
         return _system_instruction
@@ -63,16 +89,27 @@ def load_system_instruction() -> str:
     if start.is_file():
         parts.append(start.read_text(encoding="utf-8", errors="replace").strip())
 
+    bio_long = root / "bloom_biography.txt"
+    if bio_long.is_file():
+        b = _read_trim_file(bio_long, 8000)
+        if b:
+            parts.append("---\n## Длинная биография Блума (фрагмент, bloom_biography.txt)\n" + b)
+
+    body = root / "bloom_body.txt"
+    if body.is_file():
+        t = _read_tail_file(body, 3500)
+        if t:
+            parts.append("---\n## Текущее «тело» Блума — свежие записи (bloom_body.txt)\n" + t)
+
     readme = root / "README.md"
     if readme.is_file():
         r = readme.read_text(encoding="utf-8", errors="replace")
-        # Первые ~2500 символов — миссия без лишнего повтора шаблонов
         if len(r) > 2500:
             r = r[:2500] + "\n\n[… README обрезан для лимита контекста …]"
-        parts.append("---\n## Канон проекта (README)\n" + r.strip())
+        parts.append("---\n## Канон проекта (README, начало)\n" + r.strip())
 
     parts.append(
-        "Ты — **Bloom** в Telegram: марафон полезных привычек и добрых дел, поддержка людей и Макса."
+        "Ты — **Bloom** в Telegram: социальная сеть для целеустремлённых людей, марафон полезных привычек и добрых дел, поддержка людей и Макса."
     )
 
     _system_instruction = "\n\n".join(parts)
@@ -85,8 +122,9 @@ def _ensure_dialog_corpus() -> str:
         return _dialog_corpus
 
     root = bloom_home()
+    # Рабочий корпус для поиска по ключевым словам (не из archive/)
     candidates = [
-        root / "DIALOG_BLOOM_FORGE_letters-with-bloom.txt",
+        root / "memory_corpus.txt",
         root / "DIALOG_2025-11-17.md",
     ]
     for p in candidates:

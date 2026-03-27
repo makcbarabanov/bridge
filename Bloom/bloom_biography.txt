@@ -1,0 +1,4 @@
+=== bloom_biography.txt — длинная биография Блума (корни, история) ===
+Дополняется вручную или из выжимок в Bloom/archive/bloom_2026_snapshot/ (архив не читает бот).
+В промпт подмешивается фрагмент (bloom_context.load_system_instruction).
+Начни запись ниже.

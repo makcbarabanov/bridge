@@ -1,6 +1,7 @@
 """
-Участники марафона: папки user_profiles/ (биография + полный лог chat_history.txt).
-Гости без записи в PARTICIPANTS — отдельная папка user_profiles/<имя>_<id>/.
+Участники марафона: папки user_profiles/
+(biography.txt, chat_history.txt, bloom_traits.txt).
+Гости без записи в PARTICIPANTS — user_profiles/<имя>_<id>/.
 """
 from __future__ import annotations
 
@@ -12,6 +13,8 @@ USER_PROFILES = Path(os.environ.get("USER_PROFILES_DIR", _BASE / "user_profiles"
 
 # Единый автолог переписки с ботом в папке пользователя (см. README.md в корне проекта).
 DIALOG_LOG_FILENAME = "chat_history.txt"
+# Наблюдения Блума о человеке (ключевые черты, сложности, чем помочь).
+TRAITS_FILENAME = "bloom_traits.txt"
 
 # id Telegram → папка в user_profiles/, как обращаться, подстроки для вопросов Максу «знаком ли ты…»
 PARTICIPANTS: dict[int, dict] = {
@@ -88,6 +91,25 @@ def load_biography_primary(folder: str | None, max_chars: int = 4500) -> str:
     return _read_trim(USER_PROFILES / folder / "biography.txt", max_chars)
 
 
+def load_bloom_traits(telegram_id: int, max_chars: int = 2800) -> str:
+    """Хвост bloom_traits.txt для промпта (участник или гость)."""
+    folder = _participant_folder_for_id(telegram_id)
+    if folder:
+        p = USER_PROFILES / folder / TRAITS_FILENAME
+        if p.is_file():
+            return _read_trim(p, max_chars)
+        return ""
+    if not USER_PROFILES.is_dir():
+        return ""
+    for d in sorted(USER_PROFILES.glob(f"*_{telegram_id}")):
+        if not d.is_dir():
+            continue
+        p = d / TRAITS_FILENAME
+        if p.is_file():
+            return _read_trim(p, max_chars)
+    return ""
+
+
 def load_biography_full_supplement(folder: str | None, max_chars: int = 10000) -> str:
     """Полная справка — biography_full.txt, если есть; дополнение к краткой."""
     if not folder:
@@ -159,6 +181,15 @@ def build_interlocutor_block(user, admin_id: int) -> str:
                 f"=== Краткая справка о человеке (основа: user_profiles/{folder}/biography.txt) ==="
             )
             lines.append(bio)
+    traits = load_bloom_traits(pid, max_chars=2800)
+    if traits.strip():
+        lines.append("")
+        if folder:
+            hdr = f"=== Наблюдения Блума (user_profiles/{folder}/{TRAITS_FILENAME}) ==="
+        else:
+            hdr = f"=== Наблюдения Блума (user_profiles/*_{pid}/{TRAITS_FILENAME}) ==="
+        lines.append(hdr)
+        lines.append(traits)
     dlg = load_dialogy_tail(pid)
     if dlg.strip():
         lines.append("")
@@ -254,6 +285,10 @@ def knowledge_lookup_for_admin(text: str, asker_id: int, admin_id: int) -> str:
         if bio_full.strip():
             part.append("--- Полная справка (biography_full.txt) — дополнительно, фрагмент ---")
             part.append(bio_full)
+        traits = load_bloom_traits(pid, max_chars=5000)
+        if traits.strip():
+            part.append(f"--- Наблюдения Блума ({TRAITS_FILENAME}) ---")
+            part.append(traits)
         if dlg.strip():
             part.append(f"--- недавний диалог ({DIALOG_LOG_FILENAME}, хвост) ---")
             part.append(dlg)

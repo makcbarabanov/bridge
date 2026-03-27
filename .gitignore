@@ -19,8 +19,9 @@ __pycache__/
 # Логи
 *.log
 
-# Диалоги с пользователями (локально на сервере)
+# Диалоги и наблюдения (локально на сервере)
 user_profiles/**/chat_history.txt
+user_profiles/**/bloom_traits.txt
 
 # Временные файлы в inbox (оставляем только README)
 inbox/*
