@@ -20,7 +20,7 @@ __pycache__/
 *.log
 
 # Диалоги с пользователями (локально на сервере)
-dialogy/
+user_profiles/**/chat_history.txt
 
 # Временные файлы в inbox (оставляем только README)
 inbox/*

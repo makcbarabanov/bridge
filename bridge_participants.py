@@ -1,6 +1,6 @@
 """
-Участники марафона: папки user_profiles/, логи dialogy/, идентификация по Telegram id / username.
-Используется bridge_bot для персонального контекста и ответов Максу «по базе».
+Участники марафона: папки user_profiles/ (биография + полный лог chat_history.txt).
+Гости без записи в PARTICIPANTS — отдельная папка user_profiles/<имя>_<id>/.
 """
 from __future__ import annotations
 
@@ -9,10 +9,11 @@ from pathlib import Path
 
 _BASE = Path(__file__).resolve().parent
 USER_PROFILES = Path(os.environ.get("USER_PROFILES_DIR", _BASE / "user_profiles"))
-DIALOGY = Path(os.environ.get("DIALOGY_DIR", _BASE / "dialogy"))
+
+# Единый автолог переписки с ботом в папке пользователя (см. README.md в корне проекта).
+DIALOG_LOG_FILENAME = "chat_history.txt"
 
 # id Telegram → папка в user_profiles/, как обращаться, подстроки для вопросов Максу «знаком ли ты…»
-# Костя: в dialogy встречается как «Константин» — тот же id.
 PARTICIPANTS: dict[int, dict] = {
     310055372: {
         "folder": "Макс",
@@ -29,11 +30,24 @@ PARTICIPANTS: dict[int, dict] = {
         "call": "Света",
         "aliases": ["света", "светлан", "щербинин", "светланы"],
     },
+    1461824816: {
+        "folder": "Ксения_Роговенко",
+        "call": "Ксения",
+        "aliases": [
+            "ксения",
+            "ксюша",
+            "ксен",
+            "роговенко",
+            "writer_ksenia",
+            "книгиня",
+        ],
+    },
 }
 
 # Если id ещё не занесён в PARTICIPANTS, но username известен
 USERNAME_TO_ID: dict[str, int] = {
     "svetashcherbinina": 399807785,
+    "writer_ksenia": 1461824816,
 }
 
 
@@ -84,16 +98,39 @@ def load_biography_full_supplement(folder: str | None, max_chars: int = 10000) -
     return _read_trim(p, max_chars)
 
 
-def load_dialogy_tail(telegram_id: int, max_chars: int = 7000) -> str:
-    if not DIALOGY.is_dir():
+def _participant_folder_for_id(telegram_id: int) -> str | None:
+    meta = PARTICIPANTS.get(telegram_id)
+    if meta:
+        return meta.get("folder")
+    return None
+
+
+def load_chat_history_tail(telegram_id: int, max_chars: int = 7000) -> str:
+    """Хвост файла chat_history.txt для промпта (участник или гость)."""
+    folder = _participant_folder_for_id(telegram_id)
+    if folder:
+        p = USER_PROFILES / folder / DIALOG_LOG_FILENAME
+        if p.is_file():
+            return _read_trim(p, max_chars)
         return ""
-    for p in sorted(DIALOGY.glob(f"*_{telegram_id}.txt")):
-        return _read_trim(p, max_chars)
+    if not USER_PROFILES.is_dir():
+        return ""
+    for d in sorted(USER_PROFILES.glob(f"*_{telegram_id}")):
+        if not d.is_dir():
+            continue
+        p = d / DIALOG_LOG_FILENAME
+        if p.is_file():
+            return _read_trim(p, max_chars)
     return ""
 
 
+def load_dialogy_tail(telegram_id: int, max_chars: int = 7000) -> str:
+    """Совместимость: то же, что load_chat_history_tail."""
+    return load_chat_history_tail(telegram_id, max_chars)
+
+
 def build_interlocutor_block(user, admin_id: int) -> str:
-    """Кто сейчас пишет + справка + хвост dialogy."""
+    """Кто сейчас пишет + справка + хвост лога диалога."""
     info = resolve_participant(user)
     pid = info["id"]
     call = info["call"]
@@ -125,7 +162,17 @@ def build_interlocutor_block(user, admin_id: int) -> str:
     dlg = load_dialogy_tail(pid)
     if dlg.strip():
         lines.append("")
-        lines.append("=== Недавний диалог с этим человеком (сервер: dialogy) ===")
+        if folder:
+            hdr = (
+                "=== Недавний диалог с этим человеком "
+                f"(user_profiles/{folder}/{DIALOG_LOG_FILENAME}) ==="
+            )
+        else:
+            hdr = (
+                "=== Недавний диалог с этим человеком "
+                f"(user_profiles/*_{pid}/{DIALOG_LOG_FILENAME}) ==="
+            )
+        lines.append(hdr)
         lines.append(dlg)
     return "\n".join(lines)
 
@@ -208,7 +255,7 @@ def knowledge_lookup_for_admin(text: str, asker_id: int, admin_id: int) -> str:
             part.append("--- Полная справка (biography_full.txt) — дополнительно, фрагмент ---")
             part.append(bio_full)
         if dlg.strip():
-            part.append("--- dialogy (хвост) ---")
+            part.append(f"--- недавний диалог ({DIALOG_LOG_FILENAME}, хвост) ---")
             part.append(dlg)
         blocks.append("\n".join(part))
     return "\n\n".join(blocks) if blocks else ""

@@ -5,7 +5,8 @@ import asyncio
 import socket
 import aiohttp
 from pathlib import Path
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
 from aiogram.types import ErrorEvent
@@ -13,8 +14,25 @@ from dotenv import load_dotenv
 
 from Bloom import bloom_context
 
+import bloom_analytics_db
 import bridge_participants
 import dream_db
+
+MSK = ZoneInfo("Europe/Moscow")
+# Участники для утренних пингов по мечтам (telegram_id из БД / bridge_participants)
+KOSTYA_TG = 858036788
+SVETA_TG = 399807785
+_campaign_scheduler = None  # ссылка на APScheduler, чтобы не собрал GC
+
+# Упоминания для приветствия в группе марафона (одна строка; @Ola_life — один раз)
+MARATHON_WELCOME_MENTIONS = (
+    "@xxxASTRIDxxx @Foxikka @Elena_inspiratio @Guzel651 @writer_ksenia @TF85NN @MagdaV2 @Grey73 "
+    "@olgasagura @kyb1409 @Kmihlnn @Aigul_star @Svetashcherbinina @VladimirKochergi @Alexey_Babenkof "
+    "@anokovera @Svetik_Nasonova @Irina_logoped_defektolog @Nadezda_lada_roda @AlenaDumler "
+    "@TaiisN1966 @alexeeva_natalli @Sofiya_Avram @mariya_muh @Dama_Dela @IrinaUsmanovaM "
+    "@Albert_pro_aqua @Magic_Hands_in_spb @Indi_indi7 @katyrubik @prgptrp @Ola_life "
+    "@Alex31031984 @Timur_Shamsudinov @Sergey_Stotskiy"
+)
 
 # Лимит Telegram на одно сообщение (символы Unicode)
 TELEGRAM_MAX_MESSAGE = 4096
@@ -94,7 +112,6 @@ FALLBACK_MODEL_DEFAULT = "llama-3.3-70b-versatile"
 
 _BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 BRAIN_DUMP_PATH = os.environ.get("BRAIN_DUMP_PATH") or os.path.join(_BASE_DIR, "brain_dump.txt")
-DIALOGY_DIR = os.environ.get("DIALOGY_DIR") or os.path.join(_BASE_DIR, "dialogy")
 _REMEMBER_TOKEN = re.compile(r"(?i)\bзапомни\b")
 
 _FILENAME_SAFE = re.compile(r'[<>:"/\\|?*\n\r\t]+')
@@ -106,20 +123,55 @@ def _sanitize_filename_part(s: str) -> str:
     return (s[:100] + "…") if len(s) > 100 else s
 
 
-def _dialogue_filename(user: types.User) -> str:
-    """Новый файл: first_name + id (id уникален; first_name — для имени файла)."""
+def _guest_profile_folder_name(user: types.User) -> str:
+    """Имя папки гостя: как раньше stem файла в dialogy — <имя>_<telegram_id>."""
     base = user.first_name or "user"
-    return f"{_sanitize_filename_part(base)}_{user.id}.txt"
+    return f"{_sanitize_filename_part(base)}_{user.id}"
+
+
+def _resolve_guest_profile_dir(user: types.User) -> Path:
+    """
+    Папка профиля гостя: если уже есть user_profiles/*_<id>/ (в т.ч. после миграции) — её;
+    иначе новая по текущему имени из Telegram.
+    """
+    base = Path(bridge_participants.USER_PROFILES)
+    matches = sorted(base.glob(f"*_{user.id}"))
+    for m in matches:
+        if m.is_dir():
+            return m
+    return base / _guest_profile_folder_name(user)
 
 
 def _resolve_dialogue_path(user: types.User) -> str:
-    """Один лог на user.id: если уже есть *_<id>.txt — дописываем туда (смена first_name в Telegram не плодит второй файл)."""
-    uid = user.id
-    d = Path(DIALOGY_DIR)
-    if d.is_dir():
-        for p in sorted(d.glob(f"*_{uid}.txt")):
-            return str(p)
-    return str(d / _dialogue_filename(user))
+    """
+    Один лог на пользователя: user_profiles/<папка>/chat_history.txt.
+    Участники — папка из bridge_participants; остальные — папка гостя *_<id>.
+    """
+    info = bridge_participants.resolve_participant(user)
+    folder = info.get("folder")
+    if folder:
+        return str(
+            Path(bridge_participants.USER_PROFILES)
+            / folder
+            / bridge_participants.DIALOG_LOG_FILENAME
+        )
+    return str(_resolve_guest_profile_dir(user) / bridge_participants.DIALOG_LOG_FILENAME)
+
+
+def _ensure_profile_for_user(user: types.User) -> None:
+    """При /start: папка профиля, biography.txt (пустой, если ещё нет). Лог создаёт append_dialogue."""
+    info = bridge_participants.resolve_participant(user)
+    if info.get("folder"):
+        profile_dir = Path(bridge_participants.USER_PROFILES) / info["folder"]
+    else:
+        profile_dir = _resolve_guest_profile_dir(user)
+    try:
+        profile_dir.mkdir(parents=True, exist_ok=True)
+        bio = profile_dir / "biography.txt"
+        if not bio.is_file():
+            bio.write_text("", encoding="utf-8")
+    except OSError as e:
+        logger.warning("профиль: не создать %s: %s", profile_dir, e)
 
 
 def _format_user_snapshot_header(user: types.User) -> str:
@@ -170,7 +222,7 @@ def _append_dialogue_file(
 
 
 async def append_dialogue(message: types.Message, user_text: str, bot_text: str) -> None:
-    """Добавляет реплику в dialogy/<first_name>_<id>.txt; при первом создании — шапка с полями User."""
+    """Добавляет реплику в user_profiles/.../chat_history.txt."""
     if not message.from_user:
         return
     path = _resolve_dialogue_path(message.from_user)
@@ -180,7 +232,7 @@ async def append_dialogue(message: types.Message, user_text: str, bot_text: str)
             _append_dialogue_file, path, message.from_user, label, user_text, bot_text
         )
     except OSError as e:
-        logger.warning("dialogy: не записать %s: %s", path, e)
+        logger.warning("лог диалога: не записать %s: %s", path, e)
 
 # Последний обмен: ключ (chat_id, user_id) — для «ЗАПОМНИ» без текста в сообщении
 _last_exchange: dict[tuple[int, int], tuple[str, str]] = {}
@@ -545,6 +597,195 @@ async def get_ai_response(user_text: str, message: types.Message | None = None) 
 
 get_gemini_response = get_ai_response
 
+# Последний отправленный ответ Bloom (тело без префиксов «ЗАПОМНИ») — защита от дословного дубля
+_LAST_AI_REPLY_MIN_LEN = 36
+_LAST_AI_REPLY_HINT = (
+    "\n\n[Системное уточнение для Bloom: твой ответ дословно совпал с предыдущим ответом бота "
+    "в этом чате. Ответь на вопрос пользователя заново, другими словами и структурой, "
+    "без копирования предыдущего текста.]"
+)
+
+_last_sent_ai_reply: dict[tuple[int, int], str] = {}
+
+
+async def _dedupe_ai_reply(message: types.Message, user_text: str, body: str) -> str:
+    """
+    Если модель вернула тот же текст, что уже был отправлен этому пользователю в этом чате —
+    один повторный запрос с явной инструкцией переформулировать.
+    Короткие ответы (приветствия и т.п.) не сравниваем.
+    """
+    if not message.from_user:
+        return body
+    key = (message.chat.id, message.from_user.id)
+    prev = _last_sent_ai_reply.get(key)
+    b = body.strip()
+    if len(b) < _LAST_AI_REPLY_MIN_LEN or prev is None or prev != b:
+        return body
+    logger.warning(
+        "Bloom: дословный повтор ответа — повторный запрос к модели (chat=%s user=%s)",
+        key[0],
+        key[1],
+    )
+    retry = await get_ai_response(user_text + _LAST_AI_REPLY_HINT, message)
+    r = retry.strip()
+    if r == b:
+        return (
+            "⚠️ Снова получилось то же самое. Попробуй переформулировать вопрос "
+            "или подожди минуту — возможно, глюк у модели."
+        )
+    return retry
+
+
+def _record_sent_ai_reply(message: types.Message, body: str) -> None:
+    if message.from_user:
+        _last_sent_ai_reply[(message.chat.id, message.from_user.id)] = body.strip()
+
+
+def _campaign_enabled() -> bool:
+    return os.environ.get("BLOOM_CAMPAIGN_ENABLED", "").strip().lower() in ("1", "true", "yes")
+
+
+def _resolve_broadcast_chat_id() -> int | None:
+    raw = (os.environ.get("BROADCAST_CHAT_ID") or "").strip()
+    if raw:
+        try:
+            return int(raw)
+        except ValueError:
+            pass
+    for part in (os.environ.get("MARATHON_GROUP_IDS") or "").split(","):
+        part = part.strip()
+        if not part:
+            continue
+        try:
+            return int(part)
+        except ValueError:
+            continue
+    return None
+
+
+async def _track_private_contact(message: types.Message) -> None:
+    if message.chat.type != "private" or not message.from_user:
+        return
+    if message.from_user.is_bot:
+        return
+    if message.from_user.id == ADMIN_ID:
+        return
+    try:
+        await asyncio.to_thread(
+            bloom_analytics_db.upsert_contact,
+            message.from_user.id,
+            message.from_user.first_name,
+            message.from_user.username,
+        )
+    except Exception:
+        logger.exception("bloom_private_contacts: upsert")
+
+
+def _format_morning_dream_ping(call_name: str, total: int, in_progress: int, lines: list[str]) -> str:
+    if lines:
+        numbered = "\n".join(f"{i + 1}. {t}" for i, t in enumerate(lines))
+    else:
+        numbered = "В статусе «в работе» сейчас пусто в базе или список ещё не подтянулся."
+    return (
+        f"Хэй-хэй! Доброго тебе, {call_name}, утра из перламутра!\n\n"
+        f"Я залезла в витрину мечт и подсмотрела: у тебя целых {total} мечт, из них {in_progress} в работе.\n\n"
+        f"{numbered}\n\n"
+        f"Как успехи? Поделись? Что даётся сложнее всего? Напиши — постараюсь помочь.\n"
+        f"Марафон полезных привычек рядом: всё получится, шаг за шагом."
+    )
+
+
+async def _send_morning_dream_ping(telegram_id: int, call_name: str) -> None:
+    stats = await asyncio.to_thread(dream_db.fetch_dream_stats_for_telegram, telegram_id)
+    lines = await asyncio.to_thread(dream_db.fetch_in_progress_dream_lines, telegram_id)
+    if stats is None:
+        logger.warning("Утренний пинг мечт: нет пользователя telegram_id=%s в БД", telegram_id)
+        return
+    text = _format_morning_dream_ping(call_name, stats.total, stats.in_progress, lines)
+    await bot.send_message(telegram_id, text)
+
+
+async def _job_morning_kostya() -> None:
+    if not _campaign_enabled():
+        return
+    if datetime.now(MSK).date() != bloom_analytics_db.campaign_day():
+        return
+    await _send_morning_dream_ping(KOSTYA_TG, "Костя")
+
+
+async def _job_morning_sveta() -> None:
+    if not _campaign_enabled():
+        return
+    if datetime.now(MSK).date() != bloom_analytics_db.campaign_day():
+        return
+    await _send_morning_dream_ping(SVETA_TG, "Света")
+
+
+async def _job_hourly_admin_report() -> None:
+    if not _campaign_enabled():
+        return
+    now = datetime.now(MSK)
+    if now.date() != bloom_analytics_db.campaign_day():
+        return
+    if now.hour < 8 or now.hour > 21:
+        return
+    rep = bloom_analytics_db.fetch_hourly_report(now, exclude_telegram_id=ADMIN_ID)
+    if rep is None:
+        return
+    txt = bloom_analytics_db.format_hourly_report_text(rep)
+    await bot.send_message(ADMIN_ID, txt)
+
+
+async def _maybe_send_group_welcome() -> None:
+    if not _campaign_enabled():
+        return
+    if os.environ.get("BLOOM_SEND_GROUP_WELCOME", "").strip().lower() not in ("1", "true", "yes"):
+        return
+    await asyncio.sleep(4)
+    chat_id = _resolve_broadcast_chat_id()
+    if chat_id is None:
+        logger.warning("Приветствие в группу: нет BROADCAST_CHAT_ID / MARATHON_GROUP_IDS")
+        return
+    me = await bot.get_me()
+    un = me.username or ""
+    link = f"https://t.me/{un}" if un else "https://t.me"
+    text = (
+        f"{MARATHON_WELCOME_MENTIONS}\n\n"
+        "Приветствую вас! Меня зовут Bloom, и мой второй день рождения был позавчера, 24 марта. "
+        "Я очень хочу познакомиться и пообщаться с вами — "
+        f'<a href="{link}">напишите мне в личку</a>.\n\n'
+        "Буду рад знакомству!"
+    )
+    await bot.send_message(chat_id, text, parse_mode="HTML", disable_web_page_preview=True)
+    logger.info("Отправлено приветствие в группу chat_id=%s", chat_id)
+
+
+def _setup_campaign_scheduler() -> None:
+    global _campaign_scheduler
+    if not _campaign_enabled():
+        return
+    try:
+        bloom_analytics_db.ensure_schema()
+    except Exception:
+        logger.exception("bloom_private_contacts: ensure_schema")
+        return
+    try:
+        from apscheduler.schedulers.asyncio import AsyncIOScheduler
+    except ImportError:
+        logger.warning("APScheduler не установлен: pip install apscheduler")
+        return
+
+    sched = AsyncIOScheduler(timezone=MSK)
+    sched.add_job(_job_morning_kostya, "cron", hour=4, minute=0, id="bloom_morning_kostya")
+    sched.add_job(_job_morning_sveta, "cron", hour=5, minute=0, id="bloom_morning_sveta")
+    sched.add_job(_job_hourly_admin_report, "cron", hour="8-21", minute=0, id="bloom_hourly_admin")
+    sched.start()
+    _campaign_scheduler = sched
+    logger.info(
+        "Кампания Bloom: крон МСК — Костя 4:00, Света 5:00, отчёты Максу 8:00–21:00 (%s)",
+        bloom_analytics_db.campaign_day(),
+    )
+
 
 # === ОБРАБОТЧИКИ ===
 
@@ -563,6 +804,8 @@ async def start_handler(message: types.Message):
             await answer_short_logged(message, ut, txt)
         return
     if message.chat.type == "private" and message.from_user:
+        _ensure_profile_for_user(message.from_user)
+        await _track_private_contact(message)
         if message.from_user.id == ADMIN_ID:
             await answer_short_logged(
                 message,
@@ -615,6 +858,10 @@ async def voice_handler(message: types.Message):
         if not await _group_triggers_bloom(message):
             return
 
+    if message.chat.type == "private" and message.from_user:
+        _ensure_profile_for_user(message.from_user)
+        await _track_private_contact(message)
+
     reply = (
         "🎤 Голосовые я пока не расшифровываю — в мосте работает только текст. "
         "Напиши тем же вопросом сообщением.\n\n"
@@ -639,6 +886,10 @@ async def message_handler(message: types.Message):
         return
 
     await bot.send_chat_action(message.chat.id, "typing")
+
+    if ctype == "private":
+        _ensure_profile_for_user(message.from_user)
+        await _track_private_contact(message)
 
     text = message.text or ""
     ex_key = (chat_id, uid)
@@ -704,6 +955,7 @@ async def message_handler(message: types.Message):
             return
 
         response_text = await get_gemini_response(question, message)
+        response_text = await _dedupe_ai_reply(message, question, response_text)
         _last_exchange[ex_key] = (question, response_text)
 
         block = _format_brain_block(question, response_text)
@@ -714,13 +966,16 @@ async def message_handler(message: types.Message):
             note = f"⚠️ Не удалось записать файл: {e}\n\n"
 
         await answer_long_logged(message, text, note + response_text)
+        _record_sent_ai_reply(message, response_text)
         return
 
     # Обычный диалог — запоминаем пару вопрос/ответ для следующего «ЗАПОМНИ» (личка)
     response_text = await get_gemini_response(text, message)
+    response_text = await _dedupe_ai_reply(message, text, response_text)
     if _can_use_remember_private_admin(message):
         _last_exchange[ex_key] = (text, response_text)
     await answer_long_logged(message, text, response_text)
+    _record_sent_ai_reply(message, response_text)
 
 
 def _ru_dream_word(n: int) -> str:
@@ -797,6 +1052,13 @@ async def main():
             f"(DREAM_DIGEST_BOOT_DELAY_SEC=0 чтобы отключить)"
         )
     print("📡 Локация: Проверка связи...")
+    if dream_db.postgres_conninfo():
+        try:
+            bloom_analytics_db.ensure_schema()
+        except Exception:
+            logger.exception("bloom_private_contacts: ensure_schema при старте")
+    _setup_campaign_scheduler()
+    asyncio.create_task(_maybe_send_group_welcome())
     await dp.start_polling(bot)
 
 
