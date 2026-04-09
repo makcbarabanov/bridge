@@ -37,8 +37,8 @@
 **`bridge/docs/handbook/`** — зеркало в репо бота. После существенных правок в contract-репо имеет смысл **скопировать `.md` в `bridge/docs/handbook/`** и сделать коммит в `bridge`, чтобы шаблон не отставал (или наоборот в том же духе — главное не оставлять расхождение по полям API/БД).
 
 ```bash
-# пример путей на одной машине:
-cp /home/makc/island-bridge-contract/*.md /home/makc/bridge/docs/handbook/
+# подставь свои пути к клонам:
+cp ~/island-bridge-contract/*.md ~/bridge/docs/handbook/
 ```
 
 ## Как завести отдельный репозиторий на GitHub (делает Макс, один раз)
