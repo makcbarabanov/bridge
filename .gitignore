@@ -16,6 +16,9 @@ __pycache__/
 .vscode/
 .DS_Store
 
+# Локальный счётчик перезапусков бота (bridge restart)
+bridge_boot_count.txt
+
 # Логи
 *.log
 
@@ -26,3 +29,6 @@ user_profiles/**/bloom_traits.txt
 # Временные файлы в inbox (оставляем только README)
 inbox/*
 !inbox/README.md
+
+# Локальное состояние интеграции с Островом (привязки, отчёты за день)
+data/

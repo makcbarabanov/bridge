@@ -68,3 +68,31 @@ def fetch_dream_stats_for_telegram(telegram_id: int) -> DreamStats | None:
                 return DreamStats(first_name=row[0], total=int(row[1]), in_progress=int(row[2]))
     except Exception:
         raise
+
+
+def fetch_in_progress_dream_lines(telegram_id: int) -> list[str]:
+    """Тексты мечт со статусом «в работе» для пользователя (по telegram_id)."""
+    try:
+        import psycopg
+    except ImportError:
+        return []
+
+    ci = postgres_conninfo()
+    if not ci:
+        return []
+
+    sql = """
+        SELECT COALESCE(NULLIF(TRIM(d.title), ''), NULLIF(TRIM(d.dream), ''), '—') AS line
+        FROM dreams d
+        JOIN users u ON u.id = d.user_id
+        WHERE u.telegram_id = %s
+          AND d.status_id = (SELECT id FROM dreams_statuses WHERE code = 'in_progress' LIMIT 1)
+        ORDER BY d.date DESC NULLS LAST, d.id DESC
+    """
+    try:
+        with psycopg.connect(ci) as conn:
+            with conn.cursor() as cur:
+                cur.execute(sql, (telegram_id,))
+                return [str(r[0]) for r in cur.fetchall()]
+    except Exception:
+        raise

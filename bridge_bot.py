@@ -1,3 +1,4 @@
+import json
 import os
 import re
 import logging
@@ -9,7 +10,7 @@ from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
-from aiogram.types import ErrorEvent
+from aiogram.types import CallbackQuery, ErrorEvent, KeyboardButton, ReplyKeyboardMarkup
 from dotenv import load_dotenv
 
 from Bloom import bloom_context
@@ -17,12 +18,16 @@ from Bloom import bloom_context
 import bloom_analytics_db
 import bridge_participants
 import dream_db
+import island_api
+import island_jobs
+import island_state
 
 MSK = ZoneInfo("Europe/Moscow")
 # Участники для утренних пингов по мечтам (telegram_id из БД / bridge_participants)
 KOSTYA_TG = 858036788
 SVETA_TG = 399807785
 _campaign_scheduler = None  # ссылка на APScheduler, чтобы не собрал GC
+_island_scheduler = None  # крон Остров: утро / вечер
 
 # Упоминания для приветствия в группе марафона (одна строка; @Ola_life — один раз)
 MARATHON_WELCOME_MENTIONS = (
@@ -335,6 +340,50 @@ bot = Bot(token=TELEGRAM_TOKEN)
 dp = Dispatcher()
 
 
+def _bridge_boot_count_path() -> Path:
+    raw = os.environ.get("BRIDGE_BOOT_COUNT_PATH") or os.path.join(
+        _BASE_DIR, "bridge_boot_count.txt"
+    )
+    return Path(raw)
+
+
+def _read_increment_boot_count() -> int:
+    """Увеличивает счётчик запусков процесса, возвращает новое значение (для DM Максу)."""
+    p = _bridge_boot_count_path()
+    n = 0
+    try:
+        if p.is_file():
+            n = int(p.read_text(encoding="utf-8").strip() or "0")
+    except (ValueError, OSError):
+        n = 0
+    n += 1
+    try:
+        p.parent.mkdir(parents=True, exist_ok=True)
+        tmp = p.with_name(p.name + ".tmp")
+        tmp.write_text(str(n), encoding="utf-8")
+        tmp.replace(p)
+    except OSError as e:
+        logger.warning("bridge_boot_count: не записать %s: %s", p, e)
+    return n
+
+
+async def _send_admin_boot_notice() -> None:
+    """После рестарта сервиса — личное сообщение Максу с номером перезапуска."""
+    await asyncio.sleep(1.5)
+    try:
+        n = _read_increment_boot_count()
+        msg = (
+            f"Макс, привет — я ребутнулся {n}-й раз.\n"
+            f"Счётчик ребутов (актуальное число): {n}"
+        )
+        await bot.send_message(ADMIN_ID, msg)
+        logger.info("После ребута отправлено админу, счётчик=%s", n)
+    except asyncio.CancelledError:
+        raise
+    except Exception:
+        logger.exception("boot notice: не удалось отправить сообщение админу")
+
+
 async def answer_long(message: types.Message, text: str) -> None:
     """Отправляет ответ, разбивая длинные ответы на несколько сообщений."""
     chunks = _split_for_telegram(text)
@@ -349,9 +398,14 @@ async def answer_long_logged(message: types.Message, user_text: str, bot_text: s
     await answer_long(message, bot_text)
 
 
-async def answer_short_logged(message: types.Message, user_text: str, bot_text: str) -> None:
+async def answer_short_logged(
+    message: types.Message,
+    user_text: str,
+    bot_text: str,
+    reply_markup=None,
+) -> None:
     await append_dialogue(message, user_text, bot_text)
-    await message.answer(bot_text)
+    await message.answer(bot_text, reply_markup=reply_markup)
 
 
 @dp.error()
@@ -552,6 +606,18 @@ async def get_ai_response(user_text: str, message: types.Message | None = None) 
 
     front_parts: list[str] = []
     if message and message.from_user:
+        cat = bridge_participants.admin_supplement_profile_catalog(
+            user_text, message.from_user.id, ADMIN_ID
+        )
+        if cat.strip():
+            front_parts.append(cat)
+            front_parts.append(
+                "=== ОБЯЗАТЕЛЬНО ДЛЯ ОТВЕТА (запрос Макса о людях) ===\n"
+                "Выше — блок «Каталог user_profiles»: люди и краткие справки, которые команда уже "
+                "занесла на сервер. Перечисли их по именам/папкам и кратко по сути из текста. "
+                "Это не то же самое, что «кто уже писал боту в личку» — не подменяй списки и не "
+                "говори, что знаешь только тех, кто писал, если каталог выше шире."
+            )
         kb = bridge_participants.knowledge_lookup_for_admin(
             user_text, message.from_user.id, ADMIN_ID
         )
@@ -796,6 +862,165 @@ def _setup_campaign_scheduler() -> None:
     )
 
 
+def _setup_island_scheduler() -> None:
+    """Утро/вечер: план и отчёт по API Острова (ISLAND_* в .env)."""
+    global _island_scheduler
+    if not (os.environ.get("ISLAND_API_BASE_URL") or "").strip():
+        return
+    if os.environ.get("ISLAND_SCHEDULE_ENABLED", "").strip().lower() not in ("1", "true", "yes"):
+        return
+    try:
+        from apscheduler.schedulers.asyncio import AsyncIOScheduler
+    except ImportError:
+        logger.warning("Island: APScheduler не установлен — pip install apscheduler")
+        return
+
+    try:
+        mh = int(os.environ.get("ISLAND_MORNING_HOUR", "7") or "7")
+        mm = int(os.environ.get("ISLAND_MORNING_MINUTE", "0") or "0")
+        eh = int(os.environ.get("ISLAND_EVENING_HOUR", "22") or "22")
+        em = int(os.environ.get("ISLAND_EVENING_MINUTE", "0") or "0")
+    except ValueError:
+        mh, mm, eh, em = 7, 0, 22, 0
+
+    tz = island_jobs.get_schedule_timezone()
+    sched = AsyncIOScheduler(timezone=tz)
+
+    async def _morning():
+        await island_jobs.island_morning_job(bot)
+
+    async def _evening():
+        await island_jobs.island_evening_job(bot)
+
+    sched.add_job(_morning, "cron", hour=mh, minute=mm, id="island_morning")
+    sched.add_job(_evening, "cron", hour=eh, minute=em, id="island_evening")
+    sched.start()
+    _island_scheduler = sched
+    logger.info(
+        "Island: крон %s — утро %02d:%02d, вечер %02d:%02d",
+        getattr(tz, "key", tz),
+        mh,
+        mm,
+        eh,
+        em,
+    )
+
+
+# --- Личка: быстрые кнопки (параллельно командам /m /e /s) ---
+BTN_ISLAND_M = "🌿 Утро"
+BTN_ISLAND_E = "📊 Отчёт"
+BTN_DREAM_S = "⭐ Статус"
+
+
+def _private_reply_keyboard() -> ReplyKeyboardMarkup:
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text=BTN_ISLAND_M), KeyboardButton(text=BTN_ISLAND_E)],
+            [KeyboardButton(text=BTN_DREAM_S)],
+        ],
+        resize_keyboard=True,
+        input_field_placeholder="Вопрос Блуму или кнопка…",
+    )
+
+
+def _help_full_text(me_username: str) -> str:
+    un = f"@{me_username}" if me_username else "бота"
+    return (
+        "📖 Команды Bloom / Bridge\n\n"
+        "Личка:\n"
+        "• /start — приветствие и кнопки внизу\n"
+        "• /help — это сообщение\n"
+        "• /m — план на сегодня (Остров, ручной тест)\n"
+        "• /e — вечерний блок с «Подробнее» (Остров, ручной тест)\n"
+        "• /s — сводка по мечтам из БД (сколько всего и сколько в работе)\n"
+        "• /report — вечерний отчёт за сегодня + не дублировать автоотчёт в 22:00\n"
+        "• /link КОД — привязка аккаунта Острова (когда включён endpoint на сервере)\n\n"
+        "Кнопки под полем ввода делают то же: «Утро», «Отчёт», «Статус».\n\n"
+        "Группа марафона: ответь реплаем на моё сообщение или упомяни "
+        f"{un}.\n\n"
+        "«ЗАПОМНИ» — только у владельца бота в личке (запись в файл на сервере)."
+    )
+
+
+async def _invoke_island_m(message: types.Message) -> None:
+    if not _chat_allowed_for_bot(message):
+        return
+    if message.chat.type != "private" or not message.from_user:
+        return
+    ut = message.text or ""
+    mapping = island_state.load_telegram_user_map()
+    uid = mapping.get(message.from_user.id)
+    if not uid:
+        await answer_short_logged(
+            message,
+            ut,
+            "Нет привязки к Острову. Задай ISLAND_TELEGRAM_USER_MAP в .env (tg_id:user_id).",
+        )
+        return
+    try:
+        await island_jobs.send_manual_morning(bot, message.from_user.id, uid)
+    except Exception as e:
+        logger.exception("Island /m")
+        await answer_short_logged(message, ut, f"Ошибка утреннего теста: {e}")
+
+
+async def _invoke_island_e(message: types.Message) -> None:
+    if not _chat_allowed_for_bot(message):
+        return
+    if message.chat.type != "private" or not message.from_user:
+        return
+    ut = message.text or ""
+    mapping = island_state.load_telegram_user_map()
+    uid = mapping.get(message.from_user.id)
+    if not uid:
+        await answer_short_logged(
+            message,
+            ut,
+            "Нет привязки к Острову. Задай ISLAND_TELEGRAM_USER_MAP в .env (tg_id:user_id).",
+        )
+        return
+    try:
+        await island_jobs.send_manual_evening(bot, message.from_user.id, uid)
+    except Exception as e:
+        logger.exception("Island /e")
+        await answer_short_logged(message, ut, f"Ошибка вечернего теста: {e}")
+
+
+async def _invoke_dream_status(message: types.Message) -> None:
+    """Сводка по мечтам из PostgreSQL (как раньше при старте бота)."""
+    if not _chat_allowed_for_bot(message):
+        return
+    if message.chat.type != "private" or not message.from_user:
+        return
+    ut = message.text or ""
+    try:
+        import psycopg  # noqa: F401
+    except ImportError:
+        await answer_short_logged(
+            message,
+            ut,
+            "Пакет psycopg не установлен в venv бота — pip install 'psycopg[binary]'.",
+        )
+        return
+    stats = await asyncio.to_thread(dream_db.fetch_dream_stats_for_telegram, message.from_user.id)
+    if stats is None:
+        if not dream_db.postgres_conninfo():
+            await answer_short_logged(
+                message,
+                ut,
+                "БД не настроена: задай POSTGRES_HOST, POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB в .env.",
+            )
+        else:
+            await answer_short_logged(
+                message,
+                ut,
+                "В БД нет пользователя с твоим telegram_id — сводка недоступна.",
+            )
+        return
+    text = _format_dream_digest_line(stats.first_name, stats.total, stats.in_progress)
+    await answer_short_logged(message, ut, text)
+
+
 # === ОБРАБОТЧИКИ ===
 
 
@@ -815,11 +1040,18 @@ async def start_handler(message: types.Message):
     if message.chat.type == "private" and message.from_user:
         _ensure_profile_for_user(message.from_user)
         await _track_private_contact(message)
+        kb = _private_reply_keyboard()
         if message.from_user.id == ADMIN_ID:
-            await answer_short_logged(
+            await message.answer(
+                f"💎 МОСТ АКТИВИРОВАН ({GEMINI_API_VERSION}, {GEMINI_MODEL}). Блум на связи, Макс.\n\n"
+                f"Кнопки внизу или /help — список команд.",
+                reply_markup=kb,
+            )
+            await append_dialogue(
                 message,
                 ut,
-                f"💎 МОСТ АКТИВИРОВАН ({GEMINI_API_VERSION}, {GEMINI_MODEL}). Блум на связи, Макс.",
+                f"💎 МОСТ АКТИВИРОВАН ({GEMINI_API_VERSION}, {GEMINI_MODEL}). Блум на связи, Макс.\n\n"
+                f"Кнопки внизу или /help — список команд.",
             )
         else:
             fn = (message.from_user.first_name or "друг").strip()
@@ -828,9 +1060,11 @@ async def start_handler(message: types.Message):
                 f"Напомни, пожалуйста, мы знакомы? А то у меня вчера был день рождения! "
                 f"И я только-только делаю первые шаги.\n\n"
                 f"Пиши вопросы текстом — отвечу про марафон привычек и добрых дел. "
-                f"Голосовые пока не расшифровываю."
+                f"Голосовые пока не расшифровываю.\n\n"
+                f"Кнопки внизу или /help — если подключён Остров."
             )
-            await answer_short_logged(message, ut, guest)
+            await message.answer(guest, reply_markup=kb)
+            await append_dialogue(message, ut, guest)
 
 
 @dp.message(Command("help"))
@@ -842,20 +1076,210 @@ async def help_bloom(message: types.Message):
     un = f"@{me.username}" if me.username else "бота"
     ut = (message.text or "/help").strip()
     if message.chat.type == "private":
-        await answer_short_logged(
-            message,
-            ut,
-            f"🌸 Я Bloom. В личке можешь писать вопросы текстом — отвечу всем. "
-            f"Команда «ЗАПОМНИ» (запись ответа в файл на сервере) — только у владельца бота. "
-            f"В группе марафона: реплай на моё сообщение или {un}.",
-        )
+        txt = _help_full_text(me.username or "")
+        await answer_short_logged(message, ut, txt, reply_markup=_private_reply_keyboard())
         return
     await answer_short_logged(
         message,
         ut,
-        f"🌸 Я Bloom. Чтобы я ответила здесь: ответь реплаем на моё сообщение или упомяни {un}. "
+        f"🌸 Я Bloom. Чтобы я ответил здесь: ответь реплаем на моё сообщение или упомяни {un}. "
         f"В личке бот отвечает любому пользователю; «ЗАПОМНИ» — только у владельца.",
     )
+
+
+@dp.message(Command("link"))
+async def island_link_handler(message: types.Message):
+    """Привязка Telegram к аккаунту Острова по одноразовому коду из ЛК."""
+    if message.chat.type != "private" or not message.from_user:
+        return
+    ut = message.text or ""
+    parts = ut.split(maxsplit=1)
+    if len(parts) < 2:
+        await answer_short_logged(
+            message,
+            ut,
+            "Связка с Островом: получи код в личном кабинете и напиши:\n/link КОД",
+        )
+        return
+    code = parts[1].strip()
+    if not island_api.link_confirm_configured():
+        await answer_short_logged(
+            message,
+            ut,
+            "Пока на стороне Острова не подключён endpoint привязки. "
+            "Временно можно задать пару в .env: ISLAND_TELEGRAM_USER_MAP=твой_telegram_id:id_в_острове "
+            "или файл data/island_telegram_user_map.json на сервере (см. README).",
+        )
+        return
+    async with aiohttp.ClientSession() as session:
+        ok, txt = await island_api.post_telegram_link_confirm(session, code, message.from_user.id)
+    if not ok:
+        await answer_short_logged(
+            message,
+            ut,
+            f"Не получилось привязать: {txt or 'ошибка'}",
+        )
+        return
+    uid = None
+    try:
+        data = json.loads(txt)
+        if isinstance(data, dict):
+            uid = data.get("user_id")
+    except json.JSONDecodeError:
+        pass
+    if uid is not None:
+        try:
+            uid = int(uid)
+        except (TypeError, ValueError):
+            uid = None
+    if uid is not None:
+        island_state.set_telegram_user(message.from_user.id, uid)
+        await answer_short_logged(
+            message,
+            ut,
+            f"Готово — аккаунт Острова подключён (user_id={uid}). Утренний план и вечерний отчёт по расписанию.",
+        )
+    else:
+        await answer_short_logged(
+            message,
+            ut,
+            "Сервер принял код, но в ответе нет user_id — напиши Максу, добавим привязку вручную в data/island_telegram_user_map.json.",
+        )
+
+
+@dp.message(Command("report"))
+async def island_report_handler(message: types.Message):
+    """Ручной вечерний отчёт за сегодня (дубль крона в 22:00 не отправится)."""
+    if message.chat.type != "private" or not message.from_user:
+        return
+    ut = message.text or ""
+    mapping = island_state.load_telegram_user_map()
+    uid = mapping.get(message.from_user.id)
+    if not uid:
+        await answer_short_logged(
+            message,
+            ut,
+            "Сначала привяжи Остров: код из ЛК → /link КОД (или ISLAND_TELEGRAM_USER_MAP в .env).",
+        )
+        return
+    try:
+        await island_jobs.send_manual_day_report(bot, message.from_user.id, uid)
+        await answer_short_logged(
+            message,
+            ut,
+            "Готово — автоотчёт в 22:00 сегодня не продублирую.",
+        )
+    except Exception as e:
+        logger.exception("Island /report")
+        await answer_short_logged(message, ut, f"Ошибка отчёта: {e}")
+
+
+@dp.message(Command("m"))
+async def island_m_handler(message: types.Message):
+    """Имитация утреннего сообщения (ручной тест, без крона)."""
+    await _invoke_island_m(message)
+
+
+@dp.message(Command("e"))
+async def island_e_handler(message: types.Message):
+    """Имитация вечернего сообщения (ручной тест, без крона)."""
+    await _invoke_island_e(message)
+
+
+@dp.message(Command("s"))
+async def dream_status_cmd(message: types.Message):
+    """Сводка по мечтам из БД (раньше слалась автоматически при старте бота)."""
+    await _invoke_dream_status(message)
+
+
+@dp.message(F.text.in_({BTN_ISLAND_M, BTN_ISLAND_E, BTN_DREAM_S}))
+async def private_quick_buttons(message: types.Message):
+    """Те же действия, что /m, /e, /s — через кнопки клавиатуры."""
+    if message.chat.type != "private" or not message.from_user:
+        return
+    t = (message.text or "").strip()
+    if t == BTN_ISLAND_M:
+        await _invoke_island_m(message)
+    elif t == BTN_ISLAND_E:
+        await _invoke_island_e(message)
+    elif t == BTN_DREAM_S:
+        await _invoke_dream_status(message)
+
+
+@dp.callback_query(F.data.startswith("island:d:"))
+async def island_detail_callback(query: CallbackQuery):
+    if not query.from_user or not query.message:
+        await query.answer()
+        return
+    parts = query.data.split(":")
+    day_iso = parts[2] if len(parts) > 2 else island_jobs.today_iso()
+    mapping = island_state.load_telegram_user_map()
+    uid = mapping.get(query.from_user.id)
+    if not uid:
+        await query.answer("Нет привязки к Острову.", show_alert=True)
+        return
+    try:
+        text, kb = await island_jobs.detail_with_actions(uid, day_iso)
+        await query.message.answer(text, reply_markup=kb)
+        await query.answer()
+    except Exception:
+        logger.exception("Island callback detail")
+        await query.answer("Не удалось загрузить список.", show_alert=True)
+
+
+@dp.callback_query(F.data.startswith("island:a:"))
+async def island_action_callback(query: CallbackQuery):
+    """
+    island:a:{d|u}:{step|book}:{dream_id}:{source_id}:{YYYY-MM-DD}
+    d = сделал, u = не сделал.
+    """
+    if not query.from_user:
+        await query.answer()
+        return
+    mapping = island_state.load_telegram_user_map()
+    uid = mapping.get(query.from_user.id)
+    if not uid:
+        await query.answer("Нет привязки к Острову.", show_alert=True)
+        return
+    parts = (query.data or "").split(":")
+    if len(parts) != 7:
+        await query.answer("Некорректная кнопка.", show_alert=True)
+        return
+    action = parts[2]
+    source_type = parts[3]
+    try:
+        dream_id = int(parts[4])
+        source_id = int(parts[5])
+    except ValueError:
+        await query.answer("Некорректные id.", show_alert=True)
+        return
+    day_iso = parts[6]
+    try:
+        ok, msg = await island_jobs.apply_item_action(
+            user_id=uid,
+            action=action,
+            source_type=source_type,
+            dream_id=dream_id,
+            source_id=source_id,
+            day_iso=day_iso,
+        )
+        await query.answer(msg if ok else msg, show_alert=not ok)
+    except Exception:
+        logger.exception("Island callback action")
+        await query.answer("Ошибка синхронизации.", show_alert=True)
+        return
+
+    if query.message:
+        try:
+            text, kb = await island_jobs.detail_with_actions(uid, day_iso)
+            await query.message.edit_text(text, reply_markup=kb)
+        except Exception:
+            logger.exception("Island callback refresh detail")
+
+
+@dp.callback_query(F.data == "island:noop")
+async def island_noop_callback(query: CallbackQuery):
+    await query.answer()
 
 
 @dp.message(F.voice | F.audio)
@@ -943,7 +1367,7 @@ async def message_handler(message: types.Message):
             await asyncio.to_thread(_append_brain_dump, BRAIN_DUMP_PATH, block)
             preview = bloom_a[:400] + ("…" if len(bloom_a) > 400 else "")
             out = (
-                f"💾 Сохранила ответ Блум в brain_dump.txt:\n«{preview}»\n\n"
+                f"💾 Сохранил ответ Блум в brain_dump.txt:\n«{preview}»\n\n"
                 f"Файл: {BRAIN_DUMP_PATH}"
             )
         except OSError as e:
@@ -1067,7 +1491,9 @@ async def main():
         except Exception:
             logger.exception("bloom_private_contacts: ensure_schema при старте")
     _setup_campaign_scheduler()
+    _setup_island_scheduler()
     asyncio.create_task(_maybe_send_group_welcome())
+    asyncio.create_task(_send_admin_boot_notice())
     await dp.start_polling(bot)
 
 

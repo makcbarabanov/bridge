@@ -1,0 +1,6 @@
+# Рантайм бота Bridge / Bloom
+aiogram>=3.0
+python-dotenv
+aiohttp
+psycopg[binary]>=3.0
+apscheduler>=3.10

@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import os
+import re
 from pathlib import Path
 
 _BASE = Path(__file__).resolve().parent
@@ -45,12 +46,38 @@ PARTICIPANTS: dict[int, dict] = {
             "книгиня",
         ],
     },
+    957331548: {
+        "folder": "Владимир_Кочергин",
+        "call": "Владимир",
+        "aliases": [
+            "владимир",
+            "вова",
+            "кочергин",
+            "vladimir",
+            "vladimirkochergi",
+            "володя",
+        ],
+    },
+    1544917813: {
+        "folder": "Ольга_Максимова",
+        "call": "Ольга",
+        "aliases": [
+            "ольга",
+            "максимова",
+            "olga",
+            "olga_w_energy",
+            "сияй",
+            "тренер ппш",
+        ],
+    },
 }
 
 # Если id ещё не занесён в PARTICIPANTS, но username известен
 USERNAME_TO_ID: dict[str, int] = {
     "svetashcherbinina": 399807785,
     "writer_ksenia": 1461824816,
+    "vladimirkochergi": 957331548,
+    "olga_w_energy": 1544917813,
 }
 
 
@@ -127,6 +154,24 @@ def _participant_folder_for_id(telegram_id: int) -> str | None:
     return None
 
 
+def _guest_folder_for_id(telegram_id: int) -> str | None:
+    """Папка гостя user_profiles/<имя>_<id>/ — для biography.txt и т.д."""
+    if not USER_PROFILES.is_dir():
+        return None
+    for d in sorted(USER_PROFILES.glob(f"*_{telegram_id}")):
+        if d.is_dir():
+            return d.name
+    return None
+
+
+def _effective_profile_folder(user) -> str | None:
+    """Участник из PARTICIPANTS или гость с папкой *_<telegram_id>."""
+    info = resolve_participant(user)
+    if info.get("folder"):
+        return info["folder"]
+    return _guest_folder_for_id(info["id"])
+
+
 def load_chat_history_tail(telegram_id: int, max_chars: int = 7000) -> str:
     """Хвост файла chat_history.txt для промпта (участник или гость)."""
     folder = _participant_folder_for_id(telegram_id)
@@ -172,7 +217,7 @@ def build_interlocutor_block(user, admin_id: int) -> str:
         f"Если текущий telegram_id не равен {admin_id}, это **не Макс**. "
         f"Не называй собеседника Максом и не приписывай ему роль Макса."
     )
-    folder = info.get("folder")
+    folder = _effective_profile_folder(user)
     if folder:
         bio = load_biography_primary(folder)
         if bio.strip():
@@ -206,6 +251,84 @@ def build_interlocutor_block(user, admin_id: int) -> str:
         lines.append(hdr)
         lines.append(dlg)
     return "\n".join(lines)
+
+
+def catalog_user_profiles_for_admin(max_chars: int = 14000) -> str:
+    """
+    Список всех папок в user_profiles с кратким содержимым — для ответов Максу
+    «с кем ты знаком / перечисли всех».
+    """
+    if not USER_PROFILES.is_dir():
+        return ""
+    parts: list[str] = [
+        "=== Каталог user_profiles (все подготовленные профили на сервере) ===",
+        "Опирайся на это при ответе Максу о том, с кем у команды есть справка. "
+        "Папка ≠ обязательно уже писал в бота; это заранее занесённые данные.",
+        "",
+    ]
+    total = 0
+    for d in sorted(USER_PROFILES.iterdir()):
+        if not d.is_dir() or d.name.startswith("."):
+            continue
+        ps = d / "profile_summary.txt"
+        bio = d / "biography.txt"
+        block = f"**{d.name}**\n"
+        if ps.is_file():
+            block += _read_trim(ps, 2000).strip() + "\n\n"
+        elif bio.is_file():
+            block += _read_trim(bio, 2000).strip() + "\n\n"
+        else:
+            block += "(пусто или только служебные файлы)\n\n"
+        if total + len(block) > max_chars:
+            parts.append("\n[… каталог обрезан по лимиту; остальные папки смотри на диске …]")
+            break
+        parts.append(block)
+        total += len(block)
+    return "\n".join(parts).strip()
+
+
+# Не полагаемся на подстроки вроде «кого знаешь» / «с кем знаком»: между словами бывает «ты».
+# Опечатка «коо» — частый соседний ряд на клавиатуре.
+_ADMIN_CATALOG_INTENT_RX = re.compile(
+    r"к(?:ого|оо)\s+ты\s+знаешь|кого\s+вы\s+знаете|"
+    r"к(?:ого|оо)\s+ты\s+ещ[её]\s+знаешь|кого\s+вы\s+ещ[её]\s+знаете|"
+    r"к(?:ого|оо)\s+знаешь\b|кого\s+знаете\b|"
+    r"к(?:ого|оо)\s+ты\s+знаешь\s+из|кого\s+из\s+профил|"
+    r"с кем\s+ты\s+знаком|с кем\s+вы\s+знакомы|с кем\s+знаком\b",
+    re.I,
+)
+
+
+def admin_supplement_profile_catalog(text: str, asker_id: int, admin_id: int) -> str:
+    """Если Макс спрашивает про полный список знакомых/профилей — подставить каталог."""
+    if asker_id != admin_id:
+        return ""
+    tl = text.lower()
+    if _ADMIN_CATALOG_INTENT_RX.search(tl):
+        return catalog_user_profiles_for_admin()
+    triggers = (
+        "кого знаешь",
+        "с кем знаком",
+        "перечисли всех",
+        "все участники",
+        "всех участников",
+        "кроме кости",
+        "кроме тебя",
+        "кроме кост",
+        "список профилей",
+        "все профили",
+        "user_profiles",
+        "какие папки",
+        "кого ещё",
+        "кто ещё",
+        "всех пользователей",
+        "сколько профилей",
+        "из участников",
+        "на сервере профил",
+    )
+    if not any(t in tl for t in triggers):
+        return ""
+    return catalog_user_profiles_for_admin()
 
 
 def knowledge_lookup_for_admin(text: str, asker_id: int, admin_id: int) -> str:

@@ -4,17 +4,56 @@
 
 Рантайм: **aiogram** + опционально **Gemini** / **Groq**, лог диалогов, участники марафона, дайджест мечт из **PostgreSQL**.
 
+Имя ассистента в проекте: **Bridge**. Правило для ассистента: к владельцу проекта — **по-дружески и на «ты»**.
+
+**Bloom** — персонаж и тон общения в Telegram; **Bridge** — имя ассистента/бота в этом репозитории.
+
+## Bridge ↔ Island (Остров), MVP
+
+Соцсеть **Остров** (веб, `islanddream.ru`) хранит цели, шаги и расписание; бот Bloom — клиент к HTTP API, без дублирования бизнес-логики расписания в коде бота.
+
+### Что уже согласовано по API (сверка с backend)
+
+- Расписание: `GET /schedule?user_id=…&date_from=…&date_to=…` — элементы с полями `dream_id`, `source_type` (`step` \| `book`), `source_id`, `title`, `date`, `completed`. Неизвестный `source_type` в будущем — логировать и пропускать.
+- Обычный шаг: `PATCH /dreams/{dream_id}/steps/{step_id}?user_id=…` с телом, например `{"completed": true|false}`, `{"deleted": true}`, `{"deadline": "YYYY-MM-DD"}` (перенос; по умолчанию от бота можно ставить «завтра»).
+- Книга: `POST /dreams/{dream_id}/books/{book_id}/log?user_id=…` с телом минимум `date`, `minutes_spent` — на стороне БД upsert по `(book_id, date)`, повторные нажатия идемпотентны.
+
+### Авторизация и безопасность (текущее состояние → MVP)
+
+Сейчас многие endpoint-ы принимают `user_id` в query **без** bearer/service token (риск подмены `user_id`). Для MVP рекомендуется ограничить доступ к API для машины с ботом (сеть, allowlist IP) и по возможности выставить **`X-Api-Key` на nginx** хотя бы для `/schedule` и update-эндпоинтов; полноценный bot token/JWT в backend — отдельный этап.
+
+### Связка Telegram ↔ пользователь Острова
+
+Целевая колонка: `users.telegram_id` (BIGINT, уникально). Готового «привязать в один клик» в API на момент согласования не было; целевой flow: одноразовый код из ЛК → команда бота `/link CODE` → подтверждение на backend (коды с TTL, одноразовость). Реализация — на стороне Острова + хендлеры в `bridge_bot.py`.
+
+### Антидубли вечернего отчёта
+
+Целевая таблица на стороне Острова, например `daily_report_log`: `user_id`, `report_date`, `source` (`manual` \| `cron`), `sent_at`, опционально `payload`; уникальность `(user_id, report_date)`. Ручной отчёт до дедлайна делает upsert; крон вечером не шлёт повтор, если день уже закрыт.
+
+### Отчёт в общий чат марафона
+
+На первом этапе не делаем; только личка. Сводка в группу — после стабилизации ЛС-сценария.
+
+### Реализация в этом репозитории
+
+- Модули **`island_api.py`**, **`island_jobs.py`**, **`island_state.py`**: запросы к API Острова, крон утро/вечер (по `ISLAND_*`), локальные файлы в **`data/`** (привязки `telegram_id → user_id`, учёт отправленного отчёта за день), пока на backend нет `daily_report_log` и готового POST привязки.
+- В личке: **`/link`**, **`/report`**, кнопка «Подробнее» после вечернего блока.
+- Переменные: **`.env.example`** (`ISLAND_API_BASE_URL`, `ISLAND_SCHEDULE_ENABLED`, и т.д.).
+
 ## Структура репозитория
 
 ```
 bridge/
 ├── bridge_bot.py          # Точка входа бота, хендлеры, AI, фоновые задачи
+├── island_api.py          # HTTP-клиент к API Острова (/schedule, шаги, лог книг)
+├── island_jobs.py         # Утро/вечер, форматирование отчётов
+├── island_state.py        # Локальные привязки и отметки «отчёт отправлен»
 ├── dream_db.py            # Запросы к БД (мечты) — только то, что нужно боту
 ├── bridge_participants.py # Участники, user_profiles, хвост chat_history в промпт
 ├── bridge                 # Скрипт: systemctl --user для bridge-bot.service
 ├── Bloom/                 # Канон Блума: bloom_context, рабочие txt + archive/ (см. Bloom/STRUCTURE.md)
-├── book_assembly/       # Книга «14:45» — см. book_assembly/README.md (отдельный трек)
 ├── user_profiles/       # Папка на человека: biography, chat_history, bloom_traits (см. ниже)
+├── data/                # Локальное состояние Острова (не в git): привязки, отчёты за день
 ├── inbox/               # Временные файлы (в git только README)
 ├── _py_/                # Утилиты и разовые скрипты — см. _py_/README.md
 ├── .env.example
@@ -25,8 +64,8 @@ bridge/
 
 1. **Корень** — только то, что нужно для **запуска** бота и общих модулей. Новые фичи бота — рядом с `bridge_bot.py` или отдельным модулем с понятным именем (`dream_db.py`), без свалки скриптов.
 2. **`_py_/`** — всё, что запускается руками (список моделей, тестовая отправка в Telegram). Разовое — удалить после использования.
-3. **`book_assembly/`** — автономный контур «книги»; не смешивать с логикой Telegram.
-4. **Секреты** — только в `.env` (в git не попадает). Пример — `.env.example`.
+3. **Секреты** — только в `.env` (в git не попадает). Пример — `.env.example`.
+4. **Интеграция с Островом** — через HTTP API и переменные окружения (базовый URL, ключи); не подменять `/schedule` собственными правилами в боте.
 
 ## Профили и лог диалога (`user_profiles/`)
 
@@ -66,3 +105,16 @@ source venv/bin/activate
 python bridge_bot.py
 # или через systemd: bridge start | restart | status | logs
 ```
+
+### Автономность (бот не должен зависеть от Cursor)
+
+Бот **не привязан к Cursor** по коду: если он «умирает» при закрытии IDE, обычно запущен **второй экземпляр** из терминала IDE или обрывается **user-сессия** systemd.
+
+1. **Один процесс.** Рабочий вариант — только **systemd user**: `systemctl --user enable --now bridge-bot.service`. Не держи параллельно `python bridge_bot.py` в терминале Cursor — иначе два бота или путаница. Проверка: `pgrep -af bridge_bot.py` (должна быть **одна** строка с `venv/bin/python`).
+2. **Юнит в репозитории:** `systemd/user/bridge-bot.service` — копия для установки в `~/.config/systemd/user/` (в юните используется `%h` вместо жёсткого `/home/...`). После правок: `./bridge restart` (скрипт делает `daemon-reload`).
+3. **После выхода из системы / конца SSH.** Службы `systemctl --user` по умолчанию останавливаются вместе с сессией пользователя. Чтобы бот жил **без активного входа**, один раз (нужен sudo):
+
+   `sudo loginctl enable-linger $USER`
+
+   Проверка: `loginctl show-user "$USER" -p Linger` → `Linger=yes`.
+4. **Альтернатива на сервере:** отдельный system-юнит от root (`/etc/systemd/system/`) с `User=makc` — если не хотите зависеть от user-linger вообще.

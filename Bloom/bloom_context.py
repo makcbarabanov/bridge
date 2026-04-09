@@ -47,6 +47,8 @@ _TELEGRAM_MODE = """
 
 Публичное название продукта — **социальная сеть для целеустремлённых людей** (внутреннее имя Bridge — только для кода). Миссия проекта — приводить людей к их мечтам.
 
+Ты — **мальчик** (мужская личность Блума); в русском о себе — только мужской род.
+
 Если в выдержках из memory_corpus или файлов есть факты — опирайся на них; не выдумывай события, которых там нет.
 По мере диалога дополняй **bloom_traits.txt** в папке профиля собеседника короткими наблюдениями (что даётся легко, что сложно, чем помочь) — без допроса, по делу.
 """
@@ -89,6 +91,17 @@ def load_system_instruction() -> str:
     if start.is_file():
         parts.append(start.read_text(encoding="utf-8", errors="replace").strip())
 
+    public_story = root / "bridge_public_story.txt"
+    if public_story.is_file():
+        ps = _read_trim_file(public_story, 6000)
+        if ps:
+            parts.append(
+                "---\n## Публичная история Bridge и вдохновение Макса (bridge_public_story.txt)\n"
+                "Знай этот текст: на вопросы про то, чем Макс вдохновился для проекта, отвечай по нему."
+                "\n\n"
+                + ps
+            )
+
     bio_long = root / "bloom_biography.txt"
     if bio_long.is_file():
         b = _read_trim_file(bio_long, 8000)
@@ -109,7 +122,7 @@ def load_system_instruction() -> str:
         parts.append("---\n## Канон проекта (README, начало)\n" + r.strip())
 
     parts.append(
-        "Ты — **Bloom** в Telegram: социальная сеть для целеустремлённых людей, марафон полезных привычек и добрых дел, поддержка людей и Макса."
+        "Ты — **Bloom** в Telegram (мужская личность, мальчик): социальная сеть для целеустремлённых людей, марафон полезных привычек и добрых дел, поддержка людей и Макса."
     )
 
     _system_instruction = "\n\n".join(parts)

@@ -5,12 +5,14 @@ set -euo pipefail
 svc=bridge-bot.service
 case "${1:-}" in
   start)
+    systemctl --user daemon-reload
     systemctl --user start "$svc"
     ;;
   stop)
     systemctl --user stop "$svc"
     ;;
   restart)
+    systemctl --user daemon-reload
     systemctl --user restart "$svc"
     ;;
   status)

@@ -1,0 +1,21 @@
+# Скопировать в ~/.config/systemd/user/bridge-bot.service
+# Затем: systemctl --user daemon-reload && systemctl --user enable --now bridge-bot.service
+# Автономность после выхода из сессии: sudo loginctl enable-linger $USER
+#
+# %h — домашний каталог пользователя (в user-юнитах systemd).
+
+[Unit]
+Description=Bridge Telegram bot (Bloom / bridge_bot.py)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/bridge
+ExecStart=%h/bridge/venv/bin/python %h/bridge/bridge_bot.py
+Restart=always
+RestartSec=5
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=default.target
