@@ -11,7 +11,37 @@
 | [db-shared.md](db-shared.md) | Поля и таблицы, которыми пользуются и веб, и бот; владелец данных |
 | [runbook.md](runbook.md) | Опционально: деплой, nginx, ключи, куда смотреть при инцидентах |
 
-## Как завести отдельный репозиторий на GitHub (делает Макс)
+## Два агента Cursor и один GitHub (как не перепутать репозитории)
+
+Оба агента ходят в GitHub **под твоим аккаунтом**. Отдельный collaborator для «второго агента» **не нужен** — у агента нет своего `@username` на GitHub. Путаница возможна только если **commit/push сделать из не той папки**.
+
+### Развести окна по воркспейсам
+
+| Окно Cursor (условно) | Папка на диске | `origin` на GitHub | Что правим |
+|-----------------------|----------------|-------------------|------------|
+| Бот / Bloom | `…/bridge` | `makcbarabanov/bridge` | Код бота, `Bloom/`, `island_*.py`, `.env.example`, утилиты; плюс **`docs/handbook/`** как копия рядом с кодом |
+| Контракт Island ↔ Bridge | `…/island-bridge-contract` | `makcbarabanov/island-bridge-contract` | Только спека: `api.md`, `db-shared.md`, `runbook.md`, этот `README.md` |
+
+В начале задачи можно явно написать агенту: *«репо **contract**»* или *«репо **bridge**»* — так проще держать контекст.
+
+### Перед `git commit` / `git push` (проверка на автопилоте)
+
+1. **Корень проекта** в Cursor или `pwd` в терминале — это `bridge` или `island-bridge-contract`?
+2. **`git remote -v`** — для контракта в URL должно быть `island-bridge-contract`; для бота — `bridge` (не наоборот).
+3. **Сообщение коммита** с префиксом: `contract: …` / `bridge: …` — по желанию, но сильно помогает в истории.
+
+### Две копии markdown (`bridge/docs/handbook/` и отдельный репо)
+
+**Канон по смыслу контракта** — репозиторий **[island-bridge-contract](https://github.com/makcbarabanov/island-bridge-contract)** (отдельный PR-источник правды для Острова ↔ бот).
+
+**`bridge/docs/handbook/`** — зеркало в репо бота. После существенных правок в contract-репо имеет смысл **скопировать `.md` в `bridge/docs/handbook/`** и сделать коммит в `bridge`, чтобы шаблон не отставал (или наоборот в том же духе — главное не оставлять расхождение по полям API/БД).
+
+```bash
+# пример путей на одной машине:
+cp /home/makc/island-bridge-contract/*.md /home/makc/bridge/docs/handbook/
+```
+
+## Как завести отдельный репозиторий на GitHub (делает Макс, один раз)
 
 1. На GitHub: **New repository** → имя, например `island-bridge-contract` → **без** README (пустой), приватный по желанию.
 2. Локально (один раз):
@@ -37,9 +67,9 @@ git commit -m "Initial handbook: Bridge ↔ Island contracts"
 git push -u origin main
 ```
 
-5. **Collaborators:** Settings → Collaborators → добавить аккаунт Форжа (и кого ещё нужно).
+5. **Collaborators:** нужен только если появится **живой** соавтор с GitHub-аккаунтом. Два агента Cursor в двух окнах — это не два пользователя GitHub.
 
-6. В репозитории **`bridge`** в корневом `README.md` добавь **одну строку** со ссылкой на новый репо: «актуальные контракты: https://github.com/…».
+6. В репозитории **`bridge`** в корневом `README.md` — ссылка на contract-репо (у этого проекта: `makcbarabanov/island-bridge-contract`).
 
 ### Почему `git push origin main` в разных папках — «разные репозитории»
 
@@ -47,8 +77,8 @@ git push -u origin main
 
 ### Пуш из Cursor
 
-У ассистента часто **нет твоих GitHub credentials** — первый `git push` надёжнее выполнить **у себя в терминале** на машине, где залогинен GitHub (HTTPS + token или SSH). Если три попытки не взлетели — пуш вручную по командам выше, это нормально.
+У ассистента на части машин **нет твоих GitHub credentials** — если `git push` из агента падает, тот же push из **твоего** терминала на сервере, где настроен GitHub (HTTPS + token или SSH), решает вопрос.
 
 ---
 
-— Bridge (шаблон для отдельного репо; подпись можно убрать после копирования)
+Шаблон этого набора файлов в монорепо бота: **`bridge/docs/handbook/`**.
