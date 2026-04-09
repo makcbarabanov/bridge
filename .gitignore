@@ -22,9 +22,10 @@ bridge_boot_count.txt
 # Логи
 *.log
 
-# Диалоги и наблюдения (локально на сервере)
-user_profiles/**/chat_history.txt
-user_profiles/**/bloom_traits.txt
+# Профили участников — только на сервере, не в репозитории
+user_profiles/
+
+# (раньше игнорировали только часть файлов; теперь вся папка)
 
 # Временные файлы в inbox (оставляем только README)
 inbox/*
